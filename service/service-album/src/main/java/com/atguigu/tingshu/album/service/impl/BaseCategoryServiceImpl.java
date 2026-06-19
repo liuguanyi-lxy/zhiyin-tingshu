@@ -1,0 +1,38 @@
+package com.atguigu.tingshu.album.service.impl;
+
+import com.alibaba.fastjson.JSONObject;
+import com.atguigu.tingshu.album.mapper.*;
+import com.atguigu.tingshu.album.service.BaseCategoryService;
+import com.atguigu.tingshu.model.album.BaseAttribute;
+import com.atguigu.tingshu.model.album.BaseCategory1;
+import com.atguigu.tingshu.model.album.BaseCategoryView;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+@SuppressWarnings({"all"})
+public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, BaseCategory1> implements BaseCategoryService {
+
+	@Autowired
+	private BaseCategory1Mapper baseCategory1Mapper;
+
+	@Autowired
+	private BaseCategory2Mapper baseCategory2Mapper;
+
+	@Autowired
+	private BaseCategory3Mapper baseCategory3Mapper;
+
+
+	@Autowired
+	private BaseCategoryViewMapper baseCategoryViewMapper;
+
+	@Autowired
+	private BaseAttributeMapper baseAttributeMapper;
+
+}
