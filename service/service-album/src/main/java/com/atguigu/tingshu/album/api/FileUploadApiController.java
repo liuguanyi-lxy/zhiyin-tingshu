@@ -18,5 +18,15 @@ public class FileUploadApiController {
 
     @Autowired
     private MinioConstantProperties minioConstantProperties;
-
+    @Autowired
+    private FileUploadService fileUploadService;
+    //文件上传接口
+    @Operation(summary = "文件上传")
+    @PostMapping("/fileUpload")
+    public Result fileUpload(MultipartFile file) {
+        //  文件上传
+        String url = fileUploadService.upload(file);
+        //  返回数据
+        return Result.ok(url);
+    }
 }

@@ -17,15 +17,24 @@ import java.util.List;
  * 
  *
  */
+/**
+ * 分类管理接口控制器
+ * 该注解用于标识该控制器属于"分类管理"模块
+ */
 @Tag(name = "分类管理")
 @RestController
-@RequestMapping(value="/admin/album/category")
-@SuppressWarnings({"all"})
+@RequestMapping(value="/api/album/category")
+@SuppressWarnings("all")  // 使用单行注释，表示抑制所有警告
 public class BaseCategoryController {
 	
 	@Autowired
 	private BaseCategoryService baseCategoryService;
-
-
+	//查询专辑所有分类，总共三级分类，嵌套结构
+	@Operation(summary = "查询专辑所有分类")
+    @GetMapping("getBaseCategoryList")
+    public Result getBaseCategoryList() {
+		List<JSONObject> AlbumCategorylist = baseCategoryService.getBaseCategoryList();
+		return Result.ok(AlbumCategorylist);
+	}
 }
 

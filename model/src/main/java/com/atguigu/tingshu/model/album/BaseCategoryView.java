@@ -11,12 +11,13 @@ import lombok.Data;
 /**
  * <p>
  * BaseCategoryView
+ * 这是三级分类视图，每条数据有其对应的一级、二级、三级分类的ID和名称
  * </p>
  *
  * 
  */
 @Data
-@Schema(description = "分类视图")
+@Schema(description = "三级分类视图")
 @TableName("base_category_view")
 public class BaseCategoryView extends BaseEntity {
 	
