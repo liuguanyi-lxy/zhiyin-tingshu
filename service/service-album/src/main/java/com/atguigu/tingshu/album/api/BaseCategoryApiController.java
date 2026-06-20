@@ -23,6 +23,12 @@ public class BaseCategoryApiController {
 	
 	@Autowired
 	private BaseCategoryService baseCategoryService;
-
+	@Operation(summary = "根据一级分类id查询对应的标签和标签值")
+	@GetMapping("/findAttribute/{category1Id}")
+	public Result findAttribute(@PathVariable("category1Id") Long category1Id){
+		//调用baseCategoryService的方法实现
+		List<BaseAttribute> baseAttributes = baseCategoryService.findAttribute(category1Id);
+		return Result.ok(baseAttributes);
+	}
 }
 

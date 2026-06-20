@@ -9,7 +9,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-@Schema(description = "BaseAttribute")
+@Schema(description = "分类下标签名称和对应的标签值")
 @TableName("base_attribute")
 public class BaseAttribute extends BaseEntity {
 
@@ -19,11 +19,10 @@ public class BaseAttribute extends BaseEntity {
 	@TableField("category1_id")
 	private Long category1Id;
 
-	@Schema(description = "属性显示名称")
+	@Schema(description = "标签显示名称,比如:有声书分类")
 	@TableField("attribute_name")
 	private String attributeName;
-
+	@Schema(description = "标签名称下对应的标签值集合,比如[男频小说，女频小说]")
 	@TableField(exist = false)
 	private List<BaseAttributeValue> attributeValueList;
-
 }

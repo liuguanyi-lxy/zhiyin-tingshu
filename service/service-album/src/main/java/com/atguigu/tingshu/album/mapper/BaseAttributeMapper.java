@@ -9,5 +9,6 @@ import java.util.List;
 
 @Mapper
 public interface BaseAttributeMapper extends BaseMapper<BaseAttribute> {
-
+    //根据一级分类ID查询对应的标签数据
+    List<BaseAttribute> selectAttribute(@Param("category1Id") Long category1Id);
 }

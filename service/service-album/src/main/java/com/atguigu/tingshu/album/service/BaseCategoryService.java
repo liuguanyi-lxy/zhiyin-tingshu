@@ -10,4 +10,6 @@ import java.util.List;
 public interface BaseCategoryService extends IService<BaseCategory1> {
     //获取所有分类
     List<JSONObject> getBaseCategoryList();
+    //根据一级分类id获取标签数据
+    List<BaseAttribute> findAttribute(Long category1Id);
 }
