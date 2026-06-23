@@ -6,7 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 
-
+//文件上传工具类，处理文件上传，并将上传的文件保存到服务器的本地临时目录中。
 public class UploadFileUtil {
 
     /**
@@ -27,5 +27,4 @@ public class UploadFileUtil {
         file.transferTo(new File(filePath));
         return filePath;
     }
-
 }

@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "声音信息")
+@Schema(description = "查询声音的条件")
 public class TrackInfoQuery {
 
 	@Schema(description = "标题")

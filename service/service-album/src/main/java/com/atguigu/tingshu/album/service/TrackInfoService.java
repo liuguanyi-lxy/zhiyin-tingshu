@@ -1,8 +1,20 @@
 package com.atguigu.tingshu.album.service;
 
 import com.atguigu.tingshu.model.album.TrackInfo;
+import com.atguigu.tingshu.query.album.TrackInfoQuery;
+import com.atguigu.tingshu.vo.album.TrackInfoVo;
+import com.atguigu.tingshu.vo.album.TrackListVo;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 public interface TrackInfoService extends IService<TrackInfo> {
-
+    //保存声音信息
+    void saveTrackInfo(TrackInfoVo trackInfoVo);
+    //根据分页条件和查询条件查询用户的声音列表
+    IPage<TrackListVo> findUserTrackPage(Page<TrackListVo> pageParam, TrackInfoQuery trackInfoQuery);
+    //根据声音ID删除声音
+    void removeTrackInfo(Long id);
+    //修改声音信息
+    void updateTrackInfo(Long trackId, TrackInfoVo trackInfoVo);
 }

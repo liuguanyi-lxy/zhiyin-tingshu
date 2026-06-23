@@ -6,5 +6,35 @@
 
 <mapper namespace="com.atguigu.tingshu.album.mapper.TrackInfoMapper">
 
+    <select id="selectUserTrackPage" resultType="com.atguigu.tingshu.vo.album.TrackListVo">
+        select
+            album_info.id as albumId,
+            album_info.album_title as albumTitle,
+            track_info.id as trackId,
+            track_info.track_title as trackTitle,
+            if(track_info.cover_url is null, album_info.cover_url, track_info.cover_url) as coverUrl,
+            track_info.media_duration as mediaDuration,
+            track_info.status,
+            max(if(track_stat.stat_type ='0701', track_stat.stat_num, 0)) as playStatNum,
+            max(if(track_stat.stat_type ='0702', track_stat.stat_num, 0)) as collectStatNum,
+            max(if(track_stat.stat_type ='0703', track_stat.stat_num, 0)) as praiseStatNum,
+            max(if(track_stat.stat_type ='0704', track_stat.stat_num, 0)) as commentStatNum
+            from track_info left join track_stat on track_info.id = track_stat.track_id
+            left join album_info on track_info.album_id = album_info.id
+            <where>
+                <if test="trackInfoQuery.trackTitle != null and trackInfoQuery.trackTitle != ''">
+                    track_info.track_title like concat('%',#{trackInfoQuery.trackTitle},'%')
+                </if>
+                <if test="trackInfoQuery.status != null and trackInfoQuery.status != ''">
+                    and track_info.status = #{trackInfoQuery.status}
+                </if>
+                <if test="trackInfoQuery.userId != null and trackInfoQuery.userId != ''">
+                    and track_info.user_id = #{trackInfoQuery.userId}
+                </if>
+                and track_info.is_deleted = 0
+            </where>
+            group by track_info.id
+            order by track_info.id desc
+    </select>
 </mapper>
 

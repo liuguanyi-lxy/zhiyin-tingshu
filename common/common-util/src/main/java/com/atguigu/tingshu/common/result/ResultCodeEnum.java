@@ -21,7 +21,6 @@ public enum ResultCodeEnum {
     PERMISSION(209, "没有权限"),
     SIGN_OVERDUE(210, "签名已过期"),
 
-
     ACCOUNT_ERROR(211, "账号不正确"),
     PASSWORD_ERROR(212, "密码不正确"),
     PHONE_CODE_ERROR(213, "手机验证码不正确"),
@@ -45,7 +44,8 @@ public enum ResultCodeEnum {
     REPEAT_BUY_ERROR(226, "重复购买，请确认后会下单"),
 
     EXIST_NO_EXPIRE_LIVE(227, "当前存在未过期直播"),
-
+    UPLOAD_ERROR(228, "声音上传失败"),
+    DATA_DELETED(229, "数据已删除")
     ;
 
     private Integer code;

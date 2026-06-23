@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "声音媒体信息")
+@Schema(description = "根据声音文件ID从腾讯云服务器获取的声音信息")
 public class TrackMediaInfoVo {
 
 	@Schema(description = "音频文件大小，单位字节")

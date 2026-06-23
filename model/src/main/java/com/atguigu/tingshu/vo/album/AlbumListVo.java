@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "用户专辑列表信息")
+@Schema(description = "用户专辑列表中某个专辑的信息")
 public class AlbumListVo {
 
 	@Schema(description = "专辑id")

@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "AlbumStat")
+@Schema(description = "AlbumStat,统计专辑的播放量、订阅量、购买量、评论数")
 @TableName("album_stat")
 public class AlbumStat extends BaseEntity {
 

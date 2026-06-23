@@ -4,10 +4,12 @@ import com.atguigu.tingshu.model.base.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
-@Schema(description = "TrackStat")
+@AllArgsConstructor
+@Schema(description = "声音统计信息表")
 @TableName("track_stat")
 public class TrackStat extends BaseEntity {
 

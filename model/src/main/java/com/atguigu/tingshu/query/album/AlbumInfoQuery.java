@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "专辑信息")
+@Schema(description = "查询专辑的条件")
 public class AlbumInfoQuery {
 
 	@Schema(description = "标题")

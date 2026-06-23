@@ -5,15 +5,15 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
-@Schema(description = "专辑属性值")
+@Schema(description = "前端传给后端关于专辑的标签ID和标签值ID")
 public class AlbumAttributeValueVo {
 
-	@NotNull(message = "属性id不能为空")
-	@Schema(description = "属性id")
+	@NotNull(message = "标签id不能为空")
+	@Schema(description = "标签id")
 	private Long attributeId;
 
-	@NotNull(message = "属性值id不能为空")
-	@Schema(description = "属性值id")
+	@NotNull(message = "标签值id不能为空")
+	@Schema(description = "标签值id")
 	private Long valueId;
 
 }

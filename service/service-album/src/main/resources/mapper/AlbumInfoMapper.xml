@@ -7,5 +7,35 @@
 <mapper namespace="com.atguigu.tingshu.album.mapper.AlbumInfoMapper">
 
 
+    <select id="selectAlbumListPage" resultType="com.atguigu.tingshu.vo.album.AlbumListVo">
+        select
+            album_info.id albumId,
+            album_info.album_title,
+            album_info.cover_url,
+            album_info.include_track_count,
+            album_info.is_finished,
+            album_info.status,
+            max(IF(album_stat.stat_type='0401', album_stat.stat_num,0)) playStatNum,
+            max(IF(album_stat.stat_type='0402', album_stat.stat_num,0)) subscribeStatNum,
+            max(IF(album_stat.stat_type='0403', album_stat.stat_num,0)) buyStatNum,
+            max(IF(album_stat.stat_type='0404', album_stat.stat_num,0)) commentStatNum
+            from
+            album_info  inner join album_stat
+            on album_info.id = album_stat.album_id
+            <where>
+                <if test="albumInfoQuery.userId!=null">
+                    album_info.user_id = #{albumInfoQuery.userId}
+                </if>
+                <if test="albumInfoQuery.status!=null and albumInfoQuery.status!=''">
+                    and album_info.status = #{albumInfoQuery.status}
+                </if>
+                <if test="albumInfoQuery.albumTitle!=null">
+                    and album_info.album_title like concat('%',#{albumInfoQuery.albumTitle},'%')
+                </if>
+                and album_info.is_deleted = 0
+            </where>
+            group by album_info.id
+            order by album_info.id desc
+    </select>
 </mapper>
 

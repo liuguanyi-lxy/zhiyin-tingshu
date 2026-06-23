@@ -13,9 +13,9 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Data
-@Schema(description = "专辑信息")
+@Schema(description = "前端统计添加专辑的信息然后传给后端的实体类")
 public class AlbumInfoVo {
-
+	//校验注解，要求前端传入的参数满足接收参数的实体类字段要求
 	@NotEmpty(message = "专辑标题不能为空")
 	@Length(min = 2, message = "专辑标题的长度必须大于2")
 	@Schema(description = "标题", required=true)
@@ -75,7 +75,7 @@ public class AlbumInfoVo {
 
 	//递归校验
 	//@Valid
-	//@NotEmpty(message = "属性值集合不能为空")
+	@NotEmpty(message = "属性值集合不能为空")
 	@Schema(description = "属性值集合")
 	private List<AlbumAttributeValueVo> albumAttributeValueVoList;
 

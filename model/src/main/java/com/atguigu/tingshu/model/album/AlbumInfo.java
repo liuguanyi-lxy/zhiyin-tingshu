@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Data
-@Schema(description = "AlbumInfo")
+@Schema(description = "用于向album_info表插入数据的实体类，也用于向前端返回的专辑信息类")
 @TableName("album_info")
 public class AlbumInfo extends BaseEntity {
 
@@ -102,5 +102,5 @@ public class AlbumInfo extends BaseEntity {
 
 	@Schema(description = "属性值集合")
 	@TableField(exist = false)
-	private List<AlbumAttributeValue> albumAttributeValueVoList;
+	private List<AlbumAttributeValue> albumAttributeValueList;
 }

@@ -9,7 +9,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-@Schema(description = "TrackInfo")
+@Schema(description = "传递给后端保存声音信息的实体类")
 @TableName("track_info")
 public class TrackInfo extends BaseEntity {
 

@@ -6,10 +6,11 @@ import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 @Data
-@Schema(description = "声音信息")
+@Schema(description = "前端添加和修改声音传递给后端的声音信息")
 public class TrackInfoVo {
-
-	@Positive(message = "专辑Id不能为空")
+	//@Positive 是 Java Bean Validation (JSR 380) 规范中的一个注解，通常在 Spring Boot 项目中配合 javax.validation 或 jakarta.validation 包使用。
+	//它的主要作用是校验被标注的数值必须严格大于 0（即 > 0）。
+	@Positive(message = "专辑Id必须大于0")
 	@Schema(description = "专辑id", required = true)
 	private Long albumId;
 
