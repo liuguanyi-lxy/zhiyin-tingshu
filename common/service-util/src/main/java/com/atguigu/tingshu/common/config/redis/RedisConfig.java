@@ -20,7 +20,7 @@ import java.time.Duration;
 
 /**
  * Redis配置类
- *
+ * 用于配置Redis缓存相关功能，包括缓存键生成器、Redis模板和缓存管理器
  */
 @Configuration
 @EnableCaching
@@ -44,6 +44,9 @@ public class RedisConfig {
     }
 
     @Bean
+    /*标记这个 RedisTemplate 是首选的、主要的实现。因为 Spring Boot 自动配置也会生成一个 RedisTemplate Bean，
+    加上 @Primary 后，当其他类通过 @Autowired 注入 RedisTemplate 时，会优先注入我们自定义的这个，从而覆盖默认配置。*/
+    //RedisConnectionFactory 由 Spring 自动注入，它包含了连接 Redis 所需的 IP、端口、密码等信息
     @Primary
     public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
         RedisTemplate<Object, Object> redisTemplate = new RedisTemplate<>();

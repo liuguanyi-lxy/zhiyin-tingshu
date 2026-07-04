@@ -2,6 +2,7 @@ package com.atguigu.tingshu.album.api;
 
 import com.atguigu.tingshu.album.config.MinioConstantProperties;
 import com.atguigu.tingshu.album.service.FileUploadService;
+import com.atguigu.tingshu.common.login.LoginVerification;
 import com.atguigu.tingshu.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

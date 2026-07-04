@@ -14,7 +14,7 @@ public class BaseEntity implements Serializable {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-
+    //还需要创建对应的拦截器，拦截器里面会设置创建时间和修改时间的方法
     @TableField(value = "create_time",fill = FieldFill.INSERT)
     private Date createTime;
 

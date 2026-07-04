@@ -4,13 +4,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "查询专辑的条件")
+@Schema(description = "使用mysql搜索专辑的条件")
 public class AlbumInfoQuery {
 
-	@Schema(description = "标题")
+	@Schema(description = "专辑标题")
 	private String albumTitle;
 
-	@Schema(description = "状态")
+	@Schema(description = "专辑状态")
 	private String status;
 
 	@Schema(description = "用户id")

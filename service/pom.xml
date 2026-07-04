@@ -35,6 +35,7 @@
             <artifactId>common-log</artifactId>
             <version>1.0</version>
         </dependency>
+<!--        要调用什么微服务，就需要导入对应微服务器客户端的依赖-->
         <dependency>
             <groupId>com.atguigu.tingshu</groupId>
             <artifactId>service-system-client</artifactId>

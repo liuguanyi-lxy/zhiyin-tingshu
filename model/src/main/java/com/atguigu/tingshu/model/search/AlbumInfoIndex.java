@@ -1,6 +1,7 @@
 package com.atguigu.tingshu.model.search;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.DateFormat;
@@ -13,7 +14,9 @@ import java.util.Date;
 import java.util.List;
 
 @Data
+//该实体类绑定es中的索引库，作为文档映射
 @Document(indexName = "albuminfo")
+@Schema(description = "es中文档映射的实体类，包含专辑相关信息，用于封装从es搜索的数据")
 @JsonIgnoreProperties(ignoreUnknown = true)//目的：防止json字符串转成实体对象时因未识别字段报错
 public class AlbumInfoIndex implements Serializable {
 
@@ -26,7 +29,7 @@ public class AlbumInfoIndex implements Serializable {
     //  es 中能分词的字段，这个字段数据类型必须是 text！keyword 不分词！ analyzer = "ik_max_word"
     @Field(type = FieldType.Text, analyzer = "ik_max_word")
     private String albumTitle;
-
+    //给字段指定分类以及约束，analyzer是分词器，ik_max_word是最细粒度
     @Field(type = FieldType.Text, analyzer = "ik_max_word")
     private String albumIntro;
 
@@ -38,6 +41,7 @@ public class AlbumInfoIndex implements Serializable {
     private String coverUrl;
 
     //专辑包含声音总数
+    //index设置为 false 的字段不能用于搜索、排序或聚合操作，表示该字段不会被索引
     @Field(type = FieldType.Long, index = false)
     private Integer includeTrackCount;
 
@@ -82,7 +86,7 @@ public class AlbumInfoIndex implements Serializable {
     private Double hotScore = 0d;
 
     //专辑属性值
-    // Nested 支持嵌套查询
+    // Nested 支持嵌套查询，该字段的内容是列表，列表中的元素是嵌套对象，es中是一个个JSON对象
     @Field(type = FieldType.Nested)
     private List<AttributeValueIndex> attributeValueIndexList;
 

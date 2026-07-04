@@ -17,7 +17,7 @@ import lombok.Data;
  * 
  */
 @Data
-@Schema(description = "三级分类视图")
+@Schema(description = "三级分类视图,包含一、二、三级分类的ID和名称")
 @TableName("base_category_view")
 public class BaseCategoryView extends BaseEntity {
 	

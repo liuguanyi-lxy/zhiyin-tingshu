@@ -8,6 +8,7 @@ import com.atguigu.tingshu.album.service.VodService;
 import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.result.ResultCodeEnum;
+import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.model.album.TrackStat;
@@ -101,7 +102,8 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 		BeanUtils.copyProperties(trackInfoVo,trackInfo);
 		//前端传入的声音信息不完整，需要补充
 		//TODO 后续登录和用户管理模块实现再补充用户ID
-		trackInfo.setUserId(1L);
+		Long userId = AuthContextHolder.getUserId();
+		trackInfo.setUserId(userId);
 		//声音在专辑中的排序值,需要获取专辑中声音排序数最大值
 		Integer MaxOrderNum = trackInfoMapper.selectMaxOrderNUm(trackInfoVo.getAlbumId());
 		//因为专辑中的声音可能为0，作为第一条声音，排序值为1

@@ -6,6 +6,7 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
+@Schema(description = "专辑检索响应,将检索的结果统一封装到一个实体类便于显示检索内容")
 public class AlbumInfoIndexVo {
 
     // 专辑Id

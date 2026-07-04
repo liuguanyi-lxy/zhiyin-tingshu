@@ -5,5 +5,10 @@ import com.baomidou.mybatisplus.extension.service.IService;
 
 public interface UserAccountService extends IService<UserAccount> {
 
-
+    /**
+     * 添加账户信息
+     *
+     * @param userId
+     */
+    void addUserAccount(Long userId);
 }

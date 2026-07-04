@@ -1,4 +1,4 @@
-package com.atguigu.tingshu.user.intercepter;
+package com.atguigu.tingshu.common.interceptor;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import org.apache.ibatis.reflection.MetaObject;
@@ -19,5 +19,6 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
     @Override
     public void updateFill(MetaObject metaObject) {
         // 更新时自动填充逻辑
+        this.strictUpdateFill(metaObject, "updateTime", Date.class, new Date());
     }
 }

@@ -3,9 +3,8 @@ package com.atguigu.tingshu.album.service.impl;
 import com.alibaba.fastjson.JSONObject;
 import com.atguigu.tingshu.album.mapper.*;
 import com.atguigu.tingshu.album.service.BaseCategoryService;
-import com.atguigu.tingshu.model.album.BaseAttribute;
-import com.atguigu.tingshu.model.album.BaseCategory1;
-import com.atguigu.tingshu.model.album.BaseCategoryView;
+import com.atguigu.tingshu.model.album.*;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,6 +33,45 @@ public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, Ba
 
 	@Autowired
 	private BaseAttributeMapper baseAttributeMapper;
+
+	//根据一级分类Id 查询置顶频道页的三级分类列表
+	@Override
+	public List<BaseCategory3> selectTopBaseCategory3(Long category1Id) {
+
+		//# 第一步 根据一级分类id查询下面所有二级分类id
+		//SELECT bc.id FROM base_category2 bc WHERE bc.category1_id=1;
+		//# 101  102  103
+		LambdaQueryWrapper<BaseCategory2> wrapper2 = new LambdaQueryWrapper<>();
+		wrapper2.eq(BaseCategory2::getCategory1Id, category1Id);
+		List<BaseCategory2> baseCategory2List =
+				baseCategory2Mapper.selectList(wrapper2);
+
+		// baseCategory2List二级分类所有数据集合，获取所有二级分类id，构建新集合
+		List<Long> category2IdList = baseCategory2List.stream()
+				.map(BaseCategory2::getId)
+				.collect(Collectors.toList());
+
+		//# 第二步 根据第一步查询出来所有二级分类id，查询下面三级分类数据，
+		//#有条件是否置顶 is_top=1,
+		//SELECT * FROM base_category3 bc3 WHERE bc3.category2_id IN(101,102,103)
+		//AND  bc3.is_top=1  LIMIT 7
+		LambdaQueryWrapper<BaseCategory3> wrapper3 = new LambdaQueryWrapper<>();
+		wrapper3.in(BaseCategory3::getCategory2Id, category2IdList);
+		wrapper3.eq(BaseCategory3::getIsTop,1);
+		wrapper3.last(" limit 7");
+		//查询出置顶的三级分类数据
+		List<BaseCategory3> baseCategory3List = baseCategory3Mapper.selectList(wrapper3);
+		return baseCategory3List;
+	}
+
+	//根据三级分类ID在视图中查询一、二、三级分类信息
+	@Override
+	public BaseCategoryView getCategoryView(Long category3Id) {
+		//因为base_category_view中的ID就是三级分类ID，所以可以直接根据三级分类ID查询一、二、三级分类信息
+		BaseCategoryView baseCategoryView = baseCategoryViewMapper.selectById(category3Id);
+		return baseCategoryView;
+	}
+
 	//获取专辑所有分类
 	/*前端接收json格式[
 	{

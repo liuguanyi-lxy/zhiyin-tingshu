@@ -7,6 +7,9 @@ import com.atguigu.tingshu.album.mapper.TrackInfoMapper;
 import com.atguigu.tingshu.album.service.AlbumAttributeValueService;
 import com.atguigu.tingshu.album.service.AlbumInfoService;
 import com.atguigu.tingshu.common.constant.SystemConstant;
+import com.atguigu.tingshu.common.rabbit.constant.MqConst;
+import com.atguigu.tingshu.common.rabbit.service.RabbitService;
+import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.album.AlbumAttributeValue;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.AlbumStat;
@@ -29,6 +32,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -46,6 +50,24 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 	private AlbumAttributeValueService albumAttributeValueService;
 	@Autowired
 	private TrackInfoMapper trackInfoMapper;
+	@Autowired
+	private RabbitService rabbitService;
+	//根据专辑ID获取专辑的标签列表
+	@Override
+	public List<AlbumAttributeValue> findAlbumAttributeValueByAlbumId(Long albumId) {
+		LambdaQueryWrapper<AlbumAttributeValue> wrapper = new LambdaQueryWrapper<>();
+		wrapper.eq(AlbumAttributeValue::getAlbumId,albumId);
+		List<AlbumAttributeValue> albumAttributeValueList = albumAttributeValueMapper.selectList(wrapper);
+		// 返回集合数据
+		return albumAttributeValueList;
+	}
+
+	//根据专辑ID获取专辑的四个统计数据
+	@Override
+	public Map<String, Object> getAlbumInfoStat(Long albumId) {
+		return albumStatMapper.getAlbumInfoStat(albumId);
+	}
+
 	//根据用户ID查询专辑列表
 	@Override
 	public List<AlbumInfo> findUserAlbumList(Long userId) {
@@ -70,6 +92,10 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 		//1.修改专辑基本信息album_info
 		//根据专辑ID查询旧的专辑基本信息，然后将新的专辑基本信息赋值给旧的，不同的属性值会被新的覆盖
 		AlbumInfo albumInfo = albumInfoMapper.selectById(albumId);
+		//获取专辑原本是否公开的状态
+		String isOpened = albumInfo.getIsOpen();
+		//再获取修改后的专辑是否公开的状态
+		String isOpen = albumInfoVo.getIsOpen();
 		BeanUtils.copyProperties(albumInfoVo, albumInfo);
 		//然后进行更新
 		albumInfoMapper.updateById(albumInfo);
@@ -95,6 +121,15 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 			}).collect(Collectors.toList());
 			//批量添加专辑对应的标签名称和标签值
 			albumAttributeValueService.saveBatch(AlbumAttributeValueList);
+		}
+		//3.判断专辑修改前后是否公开的状态变化，从而决定是否专辑从es中上下架
+		//如果原本是私密，现在公开，就上架
+		if ("0".equals(isOpened) && "1".equals(isOpen)) {
+			rabbitService.sendMessage(MqConst.EXCHANGE_ALBUM, MqConst.ROUTING_ALBUM_UPPER, albumId);
+		}
+		//如果原本是公开，现在私密，就下架
+		if ("1".equals(isOpened) && "0".equals(isOpen)) {
+			rabbitService.sendMessage(MqConst.EXCHANGE_ALBUM, MqConst.ROUTING_ALBUM_LOWER, albumId);
 		}
 	}
 	//根据专辑ID获取专辑信息
@@ -132,6 +167,9 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 		LambdaQueryWrapper<AlbumStat> queryWrapper1 = new LambdaQueryWrapper<>();
 		queryWrapper1.eq(AlbumStat::getAlbumId, albumId);
 		albumStatMapper.delete(queryWrapper1);
+		//发送mq消息
+		//对es中的专辑信息进行下架
+		rabbitService.sendMessage(MqConst.EXCHANGE_ALBUM, MqConst.ROUTING_ALBUM_LOWER, albumId);
 	}
 	//根据条件分页查询专辑列表
 	@Override
@@ -142,14 +180,15 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 	//当前操作操作多张表，保证多张表数据一致性，添加事务
 	//当前这些表在一个数据库里面，这种事务称为本地事务
 	@Override
+	@Transactional
 	public void saveAlbumInfo(AlbumInfoVo albumInfoVo) {
 		//1.添加专辑基本信息album_info
 		//将albumInfoVo对象中对应的属性值复制到albumInfo对象中
 		AlbumInfo albumInfo = new AlbumInfo();
 		BeanUtils.copyProperties(albumInfoVo, albumInfo);
 		//用于专辑保存的albumInfo对象有几个属性需要自行赋值
-		//TODO 用户ID后续实现登录后补充
-		albumInfo.setUserId(1L);
+		Long userId = AuthContextHolder.getUserId();
+		albumInfo.setUserId(userId);
 		//专辑状态默认设置通过
 		albumInfo.setStatus(SystemConstant.ALBUM_STATUS_PASS);
 		//设置收费专辑免费试听集数为前三集
@@ -179,6 +218,10 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 		saveAlbumStat(albumInfo.getId(), SystemConstant.ALBUM_STAT_SUBSCRIBE);//订阅量
 		saveAlbumStat(albumInfo.getId(), SystemConstant.ALBUM_STAT_BROWSE);//购买量
 		saveAlbumStat(albumInfo.getId(), SystemConstant.ALBUM_STAT_COMMENT);//评论数
+		//判断专辑是否为公开，公开则通过mq发送消息专辑上架对应的微服务service-search，将专辑信息添加到索引库中
+		if("1".equals(albumInfo.getIsOpen())){
+			rabbitService.sendMessage(MqConst.EXCHANGE_ALBUM, MqConst.ROUTING_ALBUM_UPPER, albumInfo.getId());
+		}
 	}
 
 	//保存专辑指定统计数据的方法

@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-@Schema(description = "UserInfoVo")
+@Schema(description = "后端返回给前端的用户登录信息")
 public class UserInfoVo {
 
 	@Schema(description = "用户id")

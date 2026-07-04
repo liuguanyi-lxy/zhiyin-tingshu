@@ -9,13 +9,13 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-@Schema(description = "UserInfo")
+@Schema(description = "用户信息表")
 @TableName("user_info")
 public class UserInfo extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
 
-	@Schema(description = "手机")
+	@Schema(description = "手机号")
 	@TableField("phone")
 	private String phone;
 

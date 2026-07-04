@@ -2,7 +2,9 @@ package com.atguigu.tingshu.album.api;
 
 import com.atguigu.tingshu.album.service.TrackInfoService;
 import com.atguigu.tingshu.album.service.VodService;
+import com.atguigu.tingshu.common.login.LoginVerification;
 import com.atguigu.tingshu.common.result.Result;
+import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.query.album.TrackInfoQuery;
 import com.atguigu.tingshu.vo.album.TrackInfoVo;
@@ -29,6 +31,7 @@ public class TrackInfoApiController {
 	@Autowired
 	private VodService vodService;
 	//修改编辑声音之前先查询声音信息进行数据回显
+	@LoginVerification
 	@Operation(summary = "根据声音ID查询声音信息，进行数据回显给前端")
 	@GetMapping("getTrackInfo/{trackId}")
 	public Result getTrackInfo(@PathVariable("trackId") Long trackId) {
@@ -36,6 +39,7 @@ public class TrackInfoApiController {
 		return Result.ok(trackInfo);
 	}
 	//修改声音
+	@LoginVerification
 	@Operation(summary = "修改声音信息，将前端修改后的声音信息返回给后端进行修改")
 	@PutMapping("updateTrackInfo/{trackId}")
 	public Result updateTrackInfo(@PathVariable("trackId") Long trackId,
@@ -48,6 +52,7 @@ public class TrackInfoApiController {
 	 * @param file
 	 * @return
 	 */
+	@LoginVerification
 	@Operation(summary = "上传声音文件到腾讯云点播服务器")
 	@PostMapping("uploadTrack")
 	public Result<Map<String,Object>> uploadTrack(MultipartFile file) {
@@ -62,6 +67,7 @@ public class TrackInfoApiController {
 	 * @param trackInfoVo
 	 * @return
 	 */
+	@LoginVerification
 	@Operation(summary = "给指定专辑新增声音")
 	@PostMapping("saveTrackInfo")
 	public Result saveTrackInfo(@RequestBody @Validated TrackInfoVo trackInfoVo) {
@@ -69,19 +75,22 @@ public class TrackInfoApiController {
 		return Result.ok();
 	}
 	//声音列表
+	@LoginVerification
 	@Operation(summary = "获取当前用户声音分页列表")
 	@PostMapping("findUserTrackPage/{page}/{limit}")
 	public Result<IPage<TrackListVo>> findUserTrackPage
 	(@PathVariable Long page,
 	 @PathVariable Long limit,
 	 @RequestBody TrackInfoQuery trackInfoQuery){
-		trackInfoQuery.setUserId(1L);
+		Long userId = AuthContextHolder.getUserId();
+		trackInfoQuery.setUserId(userId);
 		Page<TrackListVo> pageParam = new Page<>(page, limit);
 		IPage<TrackListVo> trackListVoIPage = trackInfoService.findUserTrackPage(pageParam,trackInfoQuery);
 		// 返回数据
 		return Result.ok(trackListVoIPage);
 	}
 	//删除声音
+	@LoginVerification
 	@Operation(summary = "删除指定ID的声音")
 	@DeleteMapping("removeTrackInfo/{id}")
 	public Result removeTrackInfo(@PathVariable Long id) {

@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-@Schema(description = "专辑信息搜索")
+@Schema(description = "使用ES搜索专辑信息的条件")
 public class AlbumIndexQuery {
 
 	@Schema(description = "关键字")
@@ -21,7 +21,7 @@ public class AlbumIndexQuery {
 	@Schema(description = "三级分类")
 	private Long category3Id;
 
-	@Schema(description = "属性（属性id:属性值id）")
+	@Schema(description = "标签（标签id:标签值id）")
 	private List<String> attributeList;
 
 	// order=1:asc  排序规则   0:asc
