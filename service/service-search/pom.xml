@@ -36,6 +36,11 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-streams</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.atguigu.tingshu</groupId>
+            <artifactId>service-album-client</artifactId>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
 
     <build>

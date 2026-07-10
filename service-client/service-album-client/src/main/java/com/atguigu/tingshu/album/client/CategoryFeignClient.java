@@ -20,7 +20,7 @@ import java.util.List;
 @FeignClient(value = "service-album", fallback = CategoryDegradeFeignClient.class)
 public interface CategoryFeignClient {
     /**
-     * 根据三级分类Id 获取到一、二、三分类数据
+     * 根据三级分类Id 在视图中获取到一、二、三分类数据
      * @param category3Id
      * @return
      */

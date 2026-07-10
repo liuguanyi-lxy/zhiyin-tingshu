@@ -4,6 +4,7 @@ import com.atguigu.tingshu.album.client.impl.AlbumInfoDegradeFeignClient;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.model.album.AlbumAttributeValue;
 import com.atguigu.tingshu.model.album.AlbumInfo;
+import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,5 +31,5 @@ public interface AlbumInfoFeignClient {
 
     //根据专辑id获取四个统计数据
     @GetMapping("api/album/albumInfo/getAlbumInfoStat/{albumId}")
-    public Result getAlbumInfoStat(@PathVariable Long albumId);
+    public Result<AlbumStatVo> getAlbumInfoStat(@PathVariable Long albumId);
 }

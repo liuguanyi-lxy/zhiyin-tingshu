@@ -3,6 +3,7 @@ package com.atguigu.tingshu.album.service.impl;
 import com.atguigu.tingshu.album.mapper.AlbumInfoMapper;
 import com.atguigu.tingshu.album.mapper.TrackInfoMapper;
 import com.atguigu.tingshu.album.mapper.TrackStatMapper;
+import com.atguigu.tingshu.album.service.AlbumInfoService;
 import com.atguigu.tingshu.album.service.TrackInfoService;
 import com.atguigu.tingshu.album.service.VodService;
 import com.atguigu.tingshu.common.constant.SystemConstant;
@@ -13,9 +14,12 @@ import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.model.album.TrackStat;
 import com.atguigu.tingshu.query.album.TrackInfoQuery;
+import com.atguigu.tingshu.user.client.UserInfoFeignClient;
+import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
 import com.atguigu.tingshu.vo.album.TrackInfoVo;
 import com.atguigu.tingshu.vo.album.TrackListVo;
 import com.atguigu.tingshu.vo.album.TrackMediaInfoVo;
+import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -25,12 +29,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Date;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 @Slf4j
 @Service
@@ -45,6 +55,86 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 	private AlbumInfoMapper albumInfoMapper;
 	@Autowired
 	private TrackStatMapper trackStatMapper;
+	@Autowired
+	private UserInfoFeignClient userInfoFeignClient;
+	//根据用户ID、专辑ID、分页数据查询专辑对应声音列表，并且根据用户ID查询用户信息来决定声音是否对该用户显示收费
+	@Override
+	public IPage<AlbumTrackListVo> findAlbumTrackPage(Page<AlbumTrackListVo> pageParam, Long albumId, Long userId) {
+		//根据专辑id分页查询得到专辑对应的声音列表数据
+		IPage<AlbumTrackListVo> pageInfo = trackInfoMapper.findAlbumTrackPage(pageParam,albumId);
+		List<AlbumTrackListVo> albumTrackListVoList = pageInfo.getRecords();
+		//根据专辑ID获取专辑信息
+		AlbumInfo albumInfo = albumInfoMapper.selectById(albumId);
+		//1 根据userId判断当前是否登录
+		//1.1 如果没有登录
+		//如果专辑不是免费的，可以试看的声音免费的，其他收费
+		// isShowPaidMark=flase免费的  isShowPaidMark=true收费的
+		if(userId==null)
+		{
+			if(!SystemConstant.ALBUM_PAY_TYPE_FREE.equals(albumInfo.getPayType()))
+			{
+				//获取专辑对应的试听集数
+				Integer FreeNum = albumInfo.getTracksForFree();
+				//对专辑声音列表进行过滤，order_num>FreeNum的声音设置收费
+				albumTrackListVoList.forEach(item->{
+					if(item.getOrderNum()>FreeNum)
+                        item.setIsShowPaidMark(true);
+				});
+			}
+		}else{
+			//1.2 如果登录状态
+			//判断如果专辑vip免费的
+			//* 如果用户没有开通vip，     收费
+			//* 如果用户开通VIP但是过期了，收费
+			boolean isNeedPaid= false;
+			if(albumInfo.getPayType().equals(SystemConstant.ALBUM_PAY_TYPE_VIPFREE))
+			{
+				//根据用户ID远程调用用户微服务模块的Client的对应接口获取用户信息
+				Result<UserInfoVo> result = userInfoFeignClient.getUserInfoVo(userId);
+				UserInfoVo userInfoVo = result.getData();
+				Assert.notNull(userInfoVo,"用户信息不存在");
+				//判断用户是否开通VIP
+				if(userInfoVo.getIsVip().equals(SystemConstant.USER_NOT_VIP))
+				{
+					//没有开通VIP，收费
+                   isNeedPaid=true;
+				}
+				//开通了vip但是已经过期了收费
+				if(userInfoVo.getIsVip().equals(SystemConstant.USER_IS_VIP)&&userInfoVo.getVipExpireTime().before(new Date()))
+				{
+					isNeedPaid=true;
+				}
+				//判断专辑为付费类型， 收费
+			}else if(albumInfo.getPayType().equals(SystemConstant.ALBUM_PAY_TYPE_REQUIRE))
+			{
+				isNeedPaid=true;
+			}
+			//收费情况处理
+			if(isNeedPaid)
+			{
+				//* 判断当前用户是否购买专辑，购买过，免费
+				// 如果用户购买整个专辑，专辑里面所有声音免费
+				// 如果用户只是购买了专辑某些声音，购买的声音免费的，其他收费
+				//获取专辑对应的试听集数
+				Integer FreeNum = albumInfo.getTracksForFree();
+					//获取专辑中声音的所有ID，远程调用接口，查询用户是否购买专辑或者专辑中的某些声音，返回的是map，key为声音ID，value为是否购买的标志
+					List<Long> TrackIdList = albumTrackListVoList.stream().map(item -> item.getTrackId()).collect(Collectors.toList());
+					Result<Map<Long, Integer>> mapResult = userInfoFeignClient.userIsPaidTrack(userId, TrackIdList);
+					Map<Long, Integer> TrackPaidMap = mapResult.getData();
+					Assert.notNull(TrackPaidMap,"用户是否购买专辑或者声音信息不存在");
+					//遍历albumTrackListVoList，判断声音的排序是否大于试听数量并且根据声音ID取出mapResult的value判断是否购买，如果声音排序大于FreeNum并且未购买，将isShowPaidMark设置为true
+					albumTrackListVoList.forEach(item->{
+						if(item.getOrderNum()>FreeNum&&TrackPaidMap.get(item.getTrackId()).equals(SystemConstant.TRACK_NOT_BUY))
+						{
+							item.setIsShowPaidMark(true);
+						}
+					});
+		}
+	}
+		//将处理后的声音列表数据重新设置到分页对象中
+		pageInfo.setRecords(albumTrackListVoList);
+		return pageInfo;
+	}
 	//根据前端传入的修改后的声音信息对后端相关数据进行修改
 	@Override
 	public void updateTrackInfo(Long trackId, TrackInfoVo trackInfoVo) {

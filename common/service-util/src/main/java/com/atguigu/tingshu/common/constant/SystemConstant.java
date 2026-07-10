@@ -71,4 +71,10 @@ public class SystemConstant {
     //订单减免类型 1405-专辑折扣 1406-VIP服务折
     public static final String  ORDER_DERATE_ALBUM_DISCOUNT="1405";  // 专辑折扣
     public static final String  ORDER_DERATE_VIP_SERVICE_DISCOUNT="1406";  // VIP服务折扣
+    //用户是否为vip
+    public static final String  USER_IS_VIP="1";  // VIP
+    public static final String  USER_NOT_VIP="0";  // 非VIP
+    //声音是否被购买
+    public static final Integer  TRACK_IS_BUY=1;  // 已购买
+    public static final Integer  TRACK_NOT_BUY=0;  // 未购买
 }

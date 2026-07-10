@@ -19,4 +19,6 @@ public interface SearchService {
      * @return
      */
     List<Map<String, Object>> channel(Long category1Id);
+    //根据输入的关键字返回自动补全的字符串列表
+    List<String> completeSuggest(String keyword);
 }

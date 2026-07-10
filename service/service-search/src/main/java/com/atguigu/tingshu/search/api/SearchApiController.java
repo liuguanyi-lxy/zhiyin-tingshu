@@ -68,7 +68,7 @@ public class SearchApiController {
      * @param category1Id
      * @return
      */
-    @Operation(summary = "获取频道页数据")
+    @Operation(summary = "获取首页一级分类下频道页数据")
     @GetMapping("channel/{category1Id}")
     public Result channel(@PathVariable Long category1Id) {
 
@@ -80,6 +80,19 @@ public class SearchApiController {
             throw new RuntimeException(e);
         }
         return Result.ok(mapList);
+    }
+
+    /**
+     * 自动补全功能
+     * @param keyword
+     * @return
+     */
+    @Operation(summary = "搜索框关键字自动补全")
+    @GetMapping("completeSuggest/{keyword}")
+    public Result completeSuggest(@PathVariable String keyword) {
+        //返回一个字符串列表，每个字符串是带有关键字的一个字符串
+        List<String> list = searchService.completeSuggest(keyword);
+        return Result.ok(list);
     }
 }
 

@@ -2,6 +2,7 @@ package com.atguigu.tingshu.album.mapper;
 
 import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.query.album.TrackInfoQuery;
+import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
 import com.atguigu.tingshu.vo.album.TrackListVo;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -18,4 +19,6 @@ public interface TrackInfoMapper extends BaseMapper<TrackInfo> {
     Integer selectMaxOrderNUm(@Positive(message = "专辑Id不能为空") Long albumId);
     //根据分页条件和查询条件查询用户的声音列表，mybatis-plus分页拦截器会自动封装分页数据
     IPage<TrackListVo> selectUserTrackPage(@Param("pageParam") Page<TrackListVo> pageParam,@Param("trackInfoQuery") TrackInfoQuery trackInfoQuery);
+    //根据专辑ID和分页条件查询声音列表
+    IPage<AlbumTrackListVo> findAlbumTrackPage(@Param("pageParam") Page<AlbumTrackListVo> pageParam,@Param("albumId") Long albumId);
 }

@@ -15,6 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @Tag(name = "用户管理接口")
 @RestController
 @Slf4j
@@ -42,6 +45,19 @@ public class UserInfoApiController {
 		BeanUtils.copyProperties(userInfo,userInfoVo);
 
 		return Result.ok(userInfoVo);
+	}
+	//根据用户id查询用户是否购买专辑或者声音
+	@LoginVerification(required = false)
+	@Operation(summary = "判断用户是否购买声音列表,key是声音ID，value是声音是否被购买的标志")
+	@PostMapping("userIsPaidTrack/{albumId}")
+	public Result<Map<Long, Integer>> userIsPaidTrack(@PathVariable Long albumId,
+													  @RequestBody List<Long> trackIdList) {
+		// 获取用户Id
+		Long userId = AuthContextHolder.getUserId();
+		// 调用服务层方法
+		Map<Long, Integer> map = userInfoService.userIsPaidTrack(userId, albumId, trackIdList);
+		// 返回map 集合数据
+		return Result.ok(map);
 	}
 }
 

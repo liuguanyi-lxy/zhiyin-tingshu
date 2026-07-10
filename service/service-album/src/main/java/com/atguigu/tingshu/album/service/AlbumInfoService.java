@@ -5,6 +5,7 @@ import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.query.album.AlbumInfoQuery;
 import com.atguigu.tingshu.vo.album.AlbumInfoVo;
 import com.atguigu.tingshu.vo.album.AlbumListVo;
+import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -28,7 +29,7 @@ public interface AlbumInfoService extends IService<AlbumInfo> {
     //根据用户id查询用户专辑列表
     List<AlbumInfo> findUserAlbumList(Long userId);
     //根据专辑id获取四个统计数据
-    Map<String, Object> getAlbumInfoStat(Long albumId);
+    AlbumStatVo getAlbumInfoStat(Long albumId);
     //根据专辑Id 获取到专辑标签列表
     List<AlbumAttributeValue> findAlbumAttributeValueByAlbumId(Long albumId);
 }

@@ -9,21 +9,27 @@ import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.NestedQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.CompletionSuggest;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch.core.search.Suggestion;
 import com.alibaba.fastjson.JSON;
 import com.atguigu.tingshu.album.client.AlbumInfoFeignClient;
 import com.atguigu.tingshu.album.client.CategoryFeignClient;
 import com.atguigu.tingshu.common.result.Result;
+import com.atguigu.tingshu.common.util.PinYinUtils;
 import com.atguigu.tingshu.model.album.AlbumAttributeValue;
 import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.model.album.BaseCategory3;
 import com.atguigu.tingshu.model.album.BaseCategoryView;
 import com.atguigu.tingshu.model.search.AlbumInfoIndex;
 import com.atguigu.tingshu.model.search.AttributeValueIndex;
+import com.atguigu.tingshu.model.search.SuggestIndex;
 import com.atguigu.tingshu.query.search.AlbumIndexQuery;
 import com.atguigu.tingshu.repository.AlbumInfoIndexRepository;
+import com.atguigu.tingshu.repository.SuggestIndexRepository;
 import com.atguigu.tingshu.search.service.SearchService;
 import com.atguigu.tingshu.user.client.UserInfoFeignClient;
+import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import com.atguigu.tingshu.vo.search.AlbumInfoIndexVo;
 import com.atguigu.tingshu.vo.search.AlbumSearchResponseVo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
@@ -31,15 +37,13 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.elasticsearch.core.suggest.Completion;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Function;
@@ -64,54 +68,164 @@ public class SearchServiceImpl implements SearchService {
     //使用原生的ElasticSearch的API进行检索
     @Autowired
     private ElasticsearchClient elasticsearchClient;
-/*从 albuminfo 索引中，只取出那些 category3Id 在指定列表中的文档。
-
-将这些文档按 category3Id 分组（最多 10 组）。
-
-对每个分组，从中挑选出热度（hotScore）最高的 6 个专辑，并返回这些专辑的完整文档数据。
-GET /albuminfo/_search
+    @Autowired
+    private SuggestIndexRepository suggestIndexRepository;
+    //根据输入的关键字返回自动补全的字符串列表
+    @SneakyThrows
+    @Override
+    /*GET /suggestinfo/_search
 {
-  "query": {
-    "terms": {字段匹配多个值
-      "category3Id": [
-        "1001",
-        "1002",
-        "1003",
-        "1004",
-        "1005",
-        "1006",
-        "1007"
-      ]
-    }
-  },
-  "aggs": {聚合查询
-    "groupByCategory3IdAgg": {
-      "terms": {根据字段category3Id进行分组,分十组
-        "field": "category3Id",
-        "size": 10
-      },
-      "aggs": {
-        "topTenHotScoreAgg": {
-          "top_hits": {//找出每组按照热度排序的前六个专辑数据
-            "size": 6,
-            "sort": [
-              {
-                "hotScore": {
-                  "order": "desc"
-                }
-              }
-            ]
-          }
+  "suggest": {
+    "suggestionKeyword": {
+      "prefix": "",
+      "completion": {
+        "field": "keyword",
+        "skip_duplicates": true,
+        "size": 10,
+        "fuzzy": {
+          "fuzziness": "auto"
+        }
+      }
+    },
+     "suggestionkeywordPinyin": {
+      "prefix": "sangui",
+      "completion": {
+        "field": "keywordPinyin",
+        "skip_duplicates": true,
+        "size": 10,
+        "fuzzy": {
+          "fuzziness": "auto"
+        }
+      }
+    },
+     "suggestionkeywordSequence": {
+      "prefix": "",
+      "completion": {
+        "field": "keywordSequence",
+        "skip_duplicates": true,
+        "size": 10,
+        "fuzzy": {
+          "fuzziness": "auto"
         }
       }
     }
   }
-1. 先根据一级分类Id获取到三级分类集合数据
-2. 获取到三级分类Id集合
-3. 根据三级分类Id 集合生成根据三级分类Id查询专辑数据
-4. 根据三级分类Id聚合并获取到前6条数据并按照热度排名进行降序排列
-5. 从聚合中获取到数据并封装到返回数据的集合中
 }*/
+    public List<String> completeSuggest(String keyword) {
+        //构建查询的DSL请求语句
+        SearchRequest.Builder request = new SearchRequest.Builder();
+        request.index("suggestinfo")
+                .suggest(s->s.suggesters("suggestionKeyword",
+                        p->p.prefix(keyword)
+                                .completion(f->f.field("keyword")
+                                        .skipDuplicates(true)
+                                        .size(10)
+                                        .fuzzy(fu->fu.fuzziness("auto"))))
+                        .suggesters("suggestionkeywordPinyin",
+                                p->p.prefix(keyword)
+                                .completion(f->f.field("keywordPinyin")
+                                        .skipDuplicates(true)
+                                        .size(10)
+                                        .fuzzy(fu->fu.fuzziness("auto"))))
+                        .suggesters("suggestionkeywordSequence",
+                                p->p.prefix(keyword)
+                                        .completion(f->f.field("keywordSequence")
+                                                .skipDuplicates(true)
+                                                .size(10)
+                                                .fuzzy(fu->fu.fuzziness("auto")))));
+        //执行查询
+        SearchResponse<SuggestIndex> response = elasticsearchClient.search(request.build(), SuggestIndex.class);
+        //将查询结果封装到HashSet中，无序且去重
+        HashSet<String> titleSet = new HashSet<>();
+        //根据关键词匹配类型封装对应类型的匹配字符串
+        titleSet.addAll(this.parseResultData(response, "suggestionKeyword"));
+        titleSet.addAll(this.parseResultData(response, "suggestionkeywordPinyin"));
+        titleSet.addAll(this.parseResultData(response, "suggestionkeywordSequence"));
+        //如果查询Completion没有达到10条匹配，根据title进行普通匹配补全
+        if (titleSet.size() < 10) {
+            SearchResponse<SuggestIndex> searchResponse = elasticsearchClient.search(s->s.index("suggestinfo")
+                    .query(q -> q.match(m -> m.field("title").query(keyword))), SuggestIndex.class);
+            for(Hit<SuggestIndex> hit : searchResponse.hits().hits()) {
+                //获取数据结果
+                SuggestIndex suggestIndex = hit.source();
+                //将title添加到Set集合中
+                titleSet.add(suggestIndex.getTitle());
+                //如果Set集合大小达到10条，则退出循环
+                if (titleSet.size() >= 10) {
+                    break;
+                }
+            }
+        }
+        //将Set集合转换为List集合
+        return new ArrayList<>(titleSet);
+    }
+    //处理查询关键字对应补全字符串结果
+    private List<String> parseResultData(SearchResponse<SuggestIndex> response, String suggestionKeyword) {
+        // 创建一个String类型的List集合，用于存储建议结果
+        List<String> suggestList = new ArrayList<>();
+        // 从响应中获取建议结果映射表，键为关键词类型，值为匹配的Suggestion列表
+        Map<String, List<Suggestion<SuggestIndex>>> map = response.suggest();
+        //根据名称获取值
+        List<Suggestion<SuggestIndex>> suggestions = map.get(suggestionKeyword);
+        suggestions.forEach(item -> {
+            CompletionSuggest<SuggestIndex> completionSuggest =  item.completion();
+            completionSuggest.options().forEach(it -> {
+                SuggestIndex suggestIndex = it.source();
+                suggestList.add(suggestIndex.getTitle());
+            });
+        });
+        //  返回集合列表
+        return suggestList;
+    }
+
+    /*从 albuminfo 索引中，只取出那些 category3Id 在指定列表中的文档。
+
+    将这些文档按 category3Id 分组（最多 10 组）。
+
+    对每个分组，从中挑选出热度（hotScore）最高的 6 个专辑，并返回这些专辑的完整文档数据。
+    GET /albuminfo/_search
+    {
+      "query": {
+        "terms": {字段匹配多个值
+          "category3Id": [
+            "1001",
+            "1002",
+            "1003",
+            "1004",
+            "1005",
+            "1006",
+            "1007"
+          ]
+        }
+      },
+      "aggs": {聚合查询
+        "groupByCategory3IdAgg": {
+          "terms": {根据字段category3Id进行分组,分十组
+            "field": "category3Id",
+            "size": 10
+          },
+          "aggs": {
+            "topTenHotScoreAgg": {
+              "top_hits": {//找出每组按照热度排序的前六个专辑数据
+                "size": 6,
+                "sort": [
+                  {
+                    "hotScore": {
+                      "order": "desc"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    1. 先根据一级分类Id获取到三级分类集合数据
+    2. 获取到三级分类Id集合
+    3. 根据三级分类Id 集合生成根据三级分类Id查询专辑数据
+    4. 根据三级分类Id聚合并获取到前6条数据并按照热度排名进行降序排列
+    5. 从聚合中获取到数据并封装到返回数据的集合中
+    }*/
     @SneakyThrows
     @Override
     public List<Map<String, Object>> channel(Long category1Id) {
@@ -395,10 +509,10 @@ GET /albuminfo/_search
                 //排序需要需要两个filed
                 String finalOrderField = orderField;
                 String finalSort = sort;
-                requestBuilder.sort(s->s.field(f->f.field(finalOrderField).order(SortOrder.valueOf(finalSort))));
+                requestBuilder.sort(s->s.field(f->f.field(finalOrderField).order(SortOrder.valueOf(finalSort.toUpperCase()))));
             }else{
                 //按照默认排序方式
-                requestBuilder.sort(s->s.field(f->f.field("hotScore").order(SortOrder.Desc)));
+                requestBuilder.sort(s->s.field(f->f.field("hotScore").order(SortOrder.valueOf("DESC"))));
             }
         }
         //指定不返回字段
@@ -457,8 +571,8 @@ GET /albuminfo/_search
             Result<BaseCategoryView> result = categoryFeignClient.getCategoryView(category3Id);
             BaseCategoryView categoryData = result.getData();
             Assert.notNull(categoryData, "分类信息查询失败");
-            //将分类信息封装到es对应的索引对象中
-            BeanUtils.copyProperties(categoryData, albumInfoIndex);
+            //将分类信息封装到es对应的索引对象中,注意这里需要排除id字段，因为albumInfoIndex的ID应该是专辑ID，在第一个线程中已经被赋值，这里的categoryData的ID是第三级分类ID
+            BeanUtils.copyProperties(categoryData, albumInfoIndex, "id");
         }, threadPoolExecutor);
         //3.获取用户信息，在专辑信息任务线程后执行，接收返回结果并且异步执行
         CompletableFuture<Void> future3 = future1.thenAcceptAsync(albumInfo -> {
@@ -490,18 +604,32 @@ GET /albuminfo/_search
         //5.获取专辑的统计数据,执行异步任务
         CompletableFuture<Void> future5 = CompletableFuture.runAsync(() -> {
             //根据专辑ID查询专辑的统计数据
-            Result result = albumInfoFeignClient.getAlbumInfoStat(albumId);
-            Map<String, Object> map = (Map<String, Object>) result.getData();
-            Assert.notNull(map, "专辑统计信息查询失败");
+            Result<AlbumStatVo> result = albumInfoFeignClient.getAlbumInfoStat(albumId);
+            AlbumStatVo albumStatVo =  result.getData();
+            Assert.notNull(albumStatVo, "专辑统计信息查询失败");
             //将专辑的统计数据封装到es对应的索引对象中
-            albumInfoIndex.setPlayStatNum((Integer) map.get("playStatNum"));
-            albumInfoIndex.setSubscribeStatNum((Integer) map.get("subscribeStatNum"));
-            albumInfoIndex.setBuyStatNum((Integer) map.get("buyStatNum"));
-            albumInfoIndex.setCommentStatNum((Integer) map.get("commentStatNum"));
+            albumInfoIndex.setPlayStatNum((Integer) albumStatVo.getPlayStatNum());
+            albumInfoIndex.setSubscribeStatNum((Integer) albumStatVo.getSubscribeStatNum());
+            albumInfoIndex.setBuyStatNum((Integer) albumStatVo.getBuyStatNum());
+            albumInfoIndex.setCommentStatNum((Integer) albumStatVo.getCommentStatNum());
         }, threadPoolExecutor);
         //等待上面的线程中任务执行完毕进行汇总
         CompletableFuture.allOf(future1, future2, future3,future4,future5).join();
         //将封装好的数据保存到es中
         albumInfoIndexRepository.save(albumInfoIndex);
+        //添加数据到suggestinfo索引库，后面实现自动补全
+        SuggestIndex suggestIndex = new SuggestIndex();
+        //id
+        suggestIndex.setId(UUID.randomUUID().toString().replaceAll("-",""));
+        //专辑标题
+        suggestIndex.setTitle(albumInfoIndex.getAlbumTitle());
+        //标题中文
+        suggestIndex.setKeyword(new Completion(new String[]{albumInfoIndex.getAlbumTitle()}));
+        //中文的完整汉语拼音，比如xiaoshuo
+        suggestIndex.setKeywordPinyin(new Completion(new String[]{PinYinUtils.toHanyuPinyin(albumInfoIndex.getAlbumTitle())}));
+        //中文的汉语拼音首字母，比如xs
+        suggestIndex.setKeywordSequence(new Completion(new String[]{PinYinUtils.getFirstLetter(albumInfoIndex.getAlbumTitle())}));
+        //保存专辑标题对应的中文、拼音、拼音缩写到索引库中
+        this.suggestIndexRepository.save(suggestIndex);
     }
 }

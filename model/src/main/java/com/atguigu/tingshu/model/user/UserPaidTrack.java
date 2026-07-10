@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "UserPaidTrack")
+@Schema(description = "记录用户购买声音的实体类")
 @TableName("user_paid_track")
 public class UserPaidTrack extends BaseEntity {
 

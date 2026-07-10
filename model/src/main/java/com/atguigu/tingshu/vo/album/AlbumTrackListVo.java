@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 @Data
-@Schema(description = "用户专辑声音列表信息")
+@Schema(description = "返回给前端的专辑声音列表信息")
 public class AlbumTrackListVo {
 
 	@Schema(description = "声音id")

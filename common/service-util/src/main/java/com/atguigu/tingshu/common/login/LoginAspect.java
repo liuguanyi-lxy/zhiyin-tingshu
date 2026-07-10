@@ -59,12 +59,12 @@ public class LoginAspect {
             }
         }
         //一些后端接口对应的任务需要用户ID，就在调用接口之前的登录校验方法时，将用户ID存储到本地线程中！
-        //用户登录后，前端会请求后端服务的请求头中的token不为空，就将将用户Id存储到本地线程中！ 便于后台微服务获取用户Id！
+        //用户登录后，前端会请求后端接口服务的请求头中的token不为空，就将将用户Id存储到本地线程中！ 便于后台微服务获取用户Id！
         if (!StringUtils.isEmpty(token)){
             //  获取缓存中用户数据
             UserInfo userInfo = (UserInfo) this.redisTemplate.opsForValue().get(token);
             if (null != userInfo){
-                //存储用户Id到本地线程，用于后端微服务获取用户ID,但是localThread存活时间为一次请求，所以想要在获取用户信息的接口获取用户ID就得添加注解
+                //存储用户Id到本地线程，用于后端微服务获取用户ID,但是localThread存活时间为一次请求，所以想要在获取用户信息的接口获取用户ID就得添加登录校验注解
                 AuthContextHolder.setUserId(userInfo.getId());
             }
         }

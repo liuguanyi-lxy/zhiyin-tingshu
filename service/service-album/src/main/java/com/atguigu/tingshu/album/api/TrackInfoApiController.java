@@ -7,6 +7,7 @@ import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.query.album.TrackInfoQuery;
+import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
 import com.atguigu.tingshu.vo.album.TrackInfoVo;
 import com.atguigu.tingshu.vo.album.TrackListVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -96,6 +97,19 @@ public class TrackInfoApiController {
 	public Result removeTrackInfo(@PathVariable Long id) {
 		trackInfoService.removeTrackInfo(id);
 		return Result.ok();
+	}
+	@LoginVerification(required = false)
+	@Operation(summary = "获取指定专辑ID的声音分页列表")
+	@GetMapping("findAlbumTrackPage/{albumId}/{page}/{limit}")
+	public Result<IPage<AlbumTrackListVo>> findAlbumTrackPage(
+			@PathVariable Long albumId,
+			@PathVariable Long page,
+			@PathVariable Long limit) {
+		//从LocaThread获取用户id
+		Long userId = AuthContextHolder.getUserId();
+		Page<AlbumTrackListVo> pageParam = new Page(page,limit);
+		IPage<AlbumTrackListVo> pageModel = trackInfoService.findAlbumTrackPage(pageParam,albumId,userId);
+		return Result.ok(pageModel);
 	}
 }
 

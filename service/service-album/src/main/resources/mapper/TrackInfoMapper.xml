@@ -36,5 +36,15 @@
             group by track_info.id
             order by track_info.id desc
     </select>
+    <select id="findAlbumTrackPage" resultType="com.atguigu.tingshu.vo.album.AlbumTrackListVo">
+        SELECT
+            ts.track_id,ti.track_title,ti.media_duration,ti.order_num,
+            MAX(IF(ts.stat_type='0701',stat_num,0)) playStatNum,
+            MAX(IF(ts.stat_type='0704',stat_num,0)) commentStatNum,
+            ti.create_time
+            FROM track_stat ts INNER JOIN track_info ti on ts.track_id=ti.id
+            where ti.album_id=#{albumId} and ti.is_deleted=0 and is_open='1' and status='0501'
+            GROUP BY ti.id
+    </select>
 </mapper>
 

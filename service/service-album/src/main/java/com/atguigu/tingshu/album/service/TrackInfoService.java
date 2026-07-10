@@ -2,6 +2,7 @@ package com.atguigu.tingshu.album.service;
 
 import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.query.album.TrackInfoQuery;
+import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
 import com.atguigu.tingshu.vo.album.TrackInfoVo;
 import com.atguigu.tingshu.vo.album.TrackListVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -17,4 +18,6 @@ public interface TrackInfoService extends IService<TrackInfo> {
     void removeTrackInfo(Long id);
     //修改声音信息
     void updateTrackInfo(Long trackId, TrackInfoVo trackInfoVo);
+    //根据专辑ID查询声音列表
+    IPage<AlbumTrackListVo> findAlbumTrackPage(Page<AlbumTrackListVo> pageParam, Long albumId, Long userId);
 }

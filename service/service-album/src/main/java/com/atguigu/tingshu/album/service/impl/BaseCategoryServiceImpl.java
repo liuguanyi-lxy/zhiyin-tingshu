@@ -33,6 +33,62 @@ public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, Ba
 
 	@Autowired
 	private BaseAttributeMapper baseAttributeMapper;
+	//根据一级分类id在视图base_category_view中查询下面所有二级和三级分类数据
+	/*{
+	一级分类id：  1 (categoryId)
+	一级分类名称：音乐 (categoryName
+	child: [ category2Child
+		{
+			二级分类id：11
+			二级分类名称：音乐音效
+			child: [ category3Child
+				{
+					三级分类id：111
+					三级分类名称：运动音乐
+				}
+			]
+		}
+	]
+}*/
+	@Override
+	public JSONObject getBaseCategoryListByCategory1Id(Long category1Id) {
+		//1.根据一级分类ID查询视图base_category_view中相关数据
+		LambdaQueryWrapper<BaseCategoryView> wrapper = new LambdaQueryWrapper<>();
+		wrapper.eq(BaseCategoryView::getCategory1Id, category1Id);
+		List<BaseCategoryView> baseCategoryViews = baseCategoryViewMapper.selectList(wrapper);
+		//2.对该列表按照二级分类ID进行分组然后映射成map数组，key是二级分类ID，value是所属二级分类下的数据
+		Map<Long, List<BaseCategoryView>> listMap = baseCategoryViews.stream().collect(Collectors.groupingBy(BaseCategoryView::getCategory2Id));
+		//3.创建封装返回结果的JSON对象,将一级分类ID和一级分类名称封装进去
+		JSONObject Category1 = new JSONObject();
+		Category1.put("categoryId", category1Id);
+		Category1.put("categoryName", baseCategoryViews.get(0).getCategory1Name());
+		//创建一级分类下的二级分类集合
+		List<JSONObject> category2Child = new ArrayList<>();
+		//4.对map集合进行遍历，对一级分类下的二级分类集合进行封装，以及对二级分类下的三级分类集合进行封装
+		listMap.forEach((key, value) -> {
+			//创建封装二级分类的JSON对象
+            JSONObject category2 = new JSONObject();
+            //将二级分类ID和二级分类名称封装进去
+            category2.put("categoryId", key);
+            category2.put("categoryName", value.get(0).getCategory2Name());
+            //创建二级分类下的三级分类集合
+            List<JSONObject> category3Child = new ArrayList<>();
+			//对二级分类下的三级分类集合进行封装
+			value.forEach(item -> {
+				JSONObject category3 = new JSONObject();
+				category3.put("categoryId", item.getCategory3Id());
+				category3.put("categoryName", item.getCategory3Name());
+				category3Child.add(category3);
+			});
+			//将该二级分类下的三级分类集合加入到该二级分类的JSON对象中
+			category2.put("categoryChild", category3Child);
+			//将该二级分类的JSON对象加入到一级分类下的二级分类集合中
+			category2Child.add(category2);
+		});
+		//将该一级分类下的二级分类集合加入到一级分类的JSON对象中
+		Category1.put("categoryChild", category2Child);
+		return Category1;
+	}
 
 	//根据一级分类Id 查询置顶频道页的三级分类列表
 	@Override

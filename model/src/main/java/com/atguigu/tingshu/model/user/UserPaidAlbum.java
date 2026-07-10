@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "UserPaidAlbum")
+@Schema(description = "记录用户购买专辑的实体类")
 @TableName("user_paid_album")
 public class UserPaidAlbum extends BaseEntity {
 

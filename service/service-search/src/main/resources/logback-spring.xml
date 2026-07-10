@@ -44,12 +44,12 @@
         </encoder>
     </appender>
 
-    <!-- logstash日志 -->
-<!--    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">-->
-<!--        &lt;!&ndash; logstash ip和暴露的端口，logback就是通过这个地址把日志发送给logstash &ndash;&gt;-->
-<!--        <destination>139.198.127.41:8044</destination>-->
-<!--        <encoder charset="UTF-8" class="net.logstash.logback.encoder.LogstashEncoder" />-->
-<!--    </appender>-->
+<!--     logstash日志-->
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <!-- logstash ip和暴露的端口，logback就是通过这个地址把日志发送给logstash -->
+        <destination>192.168.13.100:8044</destination>
+        <encoder charset="UTF-8" class="net.logstash.logback.encoder.LogstashEncoder" />
+    </appender>
 
     <!-- 开发环境 -->
     <springProfile name="dev">
@@ -57,7 +57,9 @@
         <logger name="com.atguigu" level="INFO" />
         <!-- 根日志记录器：INFO级别  -->
         <root level="INFO">
-            <appender-ref ref="CONSOLE" />
+<!-- 配置两个日志输出目标：控制台和Logstash -->
+            <appender-ref ref="CONSOLE" />  <!-- 将日志输出到控制台 -->
+            <appender-ref ref="LOGSTASH" />  <!-- 将日志输出到Logstash，用于日志收集和分析 -->
 <!--            <appender-ref ref="FILE" />-->
         </root>
     </springProfile>

@@ -9,6 +9,7 @@ import com.atguigu.tingshu.model.album.AlbumInfo;
 import com.atguigu.tingshu.query.album.AlbumInfoQuery;
 import com.atguigu.tingshu.vo.album.AlbumInfoVo;
 import com.atguigu.tingshu.vo.album.AlbumListVo;
+import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
@@ -87,10 +88,10 @@ public class AlbumInfoApiController {
 	//远程调用：根据专辑id获取四个统计数据
 	@Operation(summary = "根据专辑id获取四个统计数据")
 	@GetMapping("getAlbumInfoStat/{albumId}")
-	public Result getAlbumInfoStat(@PathVariable Long albumId) {
+	public Result<AlbumStatVo> getAlbumInfoStat(@PathVariable Long albumId) {
 		//因为没有统计信息对应的实体类就用map集合接收
-		Map<String,Object> map = albumInfoService.getAlbumInfoStat(albumId);
-		return Result.ok(map);
+		AlbumStatVo albumStatVoList = albumInfoService.getAlbumInfoStat(albumId);
+		return Result.ok(albumStatVoList);
 	}
 	/**
 	 * 远程调用:根据专辑Id 获取到专辑属性列表

@@ -5,6 +5,7 @@ import com.atguigu.tingshu.album.client.AlbumInfoFeignClient;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.model.album.AlbumAttributeValue;
 import com.atguigu.tingshu.model.album.AlbumInfo;
+import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -23,7 +24,7 @@ public class AlbumInfoDegradeFeignClient implements AlbumInfoFeignClient {
     }
 
     @Override
-    public Result getAlbumInfoStat(Long albumId) {
+    public Result<AlbumStatVo> getAlbumInfoStat(Long albumId) {
         return Result.fail();
     }
 }
