@@ -15,10 +15,7 @@ import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.model.album.TrackStat;
 import com.atguigu.tingshu.query.album.TrackInfoQuery;
 import com.atguigu.tingshu.user.client.UserInfoFeignClient;
-import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
-import com.atguigu.tingshu.vo.album.TrackInfoVo;
-import com.atguigu.tingshu.vo.album.TrackListVo;
-import com.atguigu.tingshu.vo.album.TrackMediaInfoVo;
+import com.atguigu.tingshu.vo.album.*;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -57,6 +54,25 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 	private TrackStatMapper trackStatMapper;
 	@Autowired
 	private UserInfoFeignClient userInfoFeignClient;
+	@Autowired
+	private AlbumInfoService albumInfoService;
+	//更新专辑和声音的播放量
+	@Override
+	public void updateStat(TrackStatMqVo trackStatMqVo) {
+		LambdaQueryWrapper<TrackStat> wrapper = new LambdaQueryWrapper<>();
+		wrapper.eq(TrackStat::getTrackId,trackStatMqVo.getTrackId());
+		wrapper.eq(TrackStat::getStatType,trackStatMqVo.getStatType());
+		//根据声音ID的统计类型获取对应的数据
+		TrackStat trackStat = trackStatMapper.selectOne(wrapper);
+		Assert.notNull(trackStat,"声音统计信息不存在");
+		//修改声音的播放量的值
+		trackStat.setStatNum(trackStat.getStatNum()+trackStatMqVo.getCount());
+		//更新声音的播放量
+		trackStatMapper.updateById(trackStat);
+		//更新专辑的播放量
+		albumInfoService.updateStat(trackStatMqVo.getAlbumId(),trackStatMqVo.getStatType(),trackStatMqVo.getCount());
+	}
+
 	//根据用户ID、专辑ID、分页数据查询专辑对应声音列表，并且根据用户ID查询用户信息来决定声音是否对该用户显示收费
 	@Override
 	public IPage<AlbumTrackListVo> findAlbumTrackPage(Page<AlbumTrackListVo> pageParam, Long albumId, Long userId) {

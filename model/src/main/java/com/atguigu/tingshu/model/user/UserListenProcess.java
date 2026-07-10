@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 @Data
-@Schema(description = "UserListenProcess")
+@Schema(description = "接收MongoDB集合中查询到的文档，也就是封装的指定用户ID指定声音的播放进度")
 @Document
 public class UserListenProcess {
 

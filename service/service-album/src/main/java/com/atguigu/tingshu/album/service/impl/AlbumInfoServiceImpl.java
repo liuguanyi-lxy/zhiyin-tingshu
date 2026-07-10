@@ -29,6 +29,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
 import java.util.Collections;
@@ -53,6 +54,20 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 	private TrackInfoMapper trackInfoMapper;
 	@Autowired
 	private RabbitService rabbitService;
+	//根据专辑ID和专辑对应统计类型修改播放量
+	@Override
+	public void updateStat(Long albumId, String statType,Integer count) {
+		//根据专辑ID和统计类型查询专辑统计信息
+		LambdaQueryWrapper<AlbumStat> wrapper = new LambdaQueryWrapper<>();
+		wrapper.eq(AlbumStat::getAlbumId,albumId);
+		wrapper.eq(AlbumStat::getStatType,SystemConstant.ALBUM_STAT_PLAY);
+		AlbumStat albumStat = albumStatMapper.selectOne(wrapper);
+		Assert.notNull(albumStat, "专辑统计信息不存在");
+		//对专辑播放量进行修改
+		albumStat.setStatNum(albumStat.getStatNum()+count);
+		albumStatMapper.updateById(albumStat);
+	}
+
 	//根据专辑ID获取专辑的标签列表
 	@Override
 	public List<AlbumAttributeValue> findAlbumAttributeValueByAlbumId(Long albumId) {

@@ -5,6 +5,7 @@ import com.atguigu.tingshu.query.album.TrackInfoQuery;
 import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
 import com.atguigu.tingshu.vo.album.TrackInfoVo;
 import com.atguigu.tingshu.vo.album.TrackListVo;
+import com.atguigu.tingshu.vo.album.TrackStatMqVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -20,4 +21,6 @@ public interface TrackInfoService extends IService<TrackInfo> {
     void updateTrackInfo(Long trackId, TrackInfoVo trackInfoVo);
     //根据专辑ID查询声音列表
     IPage<AlbumTrackListVo> findAlbumTrackPage(Page<AlbumTrackListVo> pageParam, Long albumId, Long userId);
+    //更新声音播放量
+    void updateStat(TrackStatMqVo trackStatMqVo);
 }

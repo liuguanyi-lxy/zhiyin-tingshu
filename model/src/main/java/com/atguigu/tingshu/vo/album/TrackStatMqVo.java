@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@Schema(description = "TrackStatMqVo")
+@Schema(description = "专辑和声音播放量更新时，service-album微服务模块接收RabbitMq发送消息的实体类")
 public class TrackStatMqVo {
 
 	@Schema(description = "业务编号：去重使用")

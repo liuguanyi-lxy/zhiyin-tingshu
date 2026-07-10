@@ -7,7 +7,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-@Schema(description = "UserListenProcess")
+@Schema(description = "前端传入给后端关于声音播放进度的数据，用于在MongoDB中更新")
 public class UserListenProcessVo {
 
 	@Schema(description = "专辑id")

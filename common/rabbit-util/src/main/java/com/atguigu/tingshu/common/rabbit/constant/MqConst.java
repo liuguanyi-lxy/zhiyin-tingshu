@@ -1,5 +1,5 @@
 package com.atguigu.tingshu.common.rabbit.constant;
-
+//RabbitMq常用的静态变量
 public class MqConst {
 
     /**

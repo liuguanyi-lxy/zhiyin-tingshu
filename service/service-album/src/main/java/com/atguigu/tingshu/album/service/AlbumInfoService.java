@@ -32,4 +32,6 @@ public interface AlbumInfoService extends IService<AlbumInfo> {
     AlbumStatVo getAlbumInfoStat(Long albumId);
     //根据专辑Id 获取到专辑标签列表
     List<AlbumAttributeValue> findAlbumAttributeValueByAlbumId(Long albumId);
+    //根据专辑ID和统计类型修改专辑的播放量
+    void updateStat(Long albumId, String statType,Integer count);
 }
