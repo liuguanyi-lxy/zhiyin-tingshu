@@ -20,4 +20,6 @@ public interface BaseCategoryService extends IService<BaseCategory1> {
     List<BaseCategory3> selectTopBaseCategory3(Long category1Id);
     //根据一级分类Id 获取该分类下所有二、三级分类的数据
     JSONObject getBaseCategoryListByCategory1Id(Long category1Id);
+    //获取所有一级分类
+    List<BaseCategory1> findAllCategory1();
 }

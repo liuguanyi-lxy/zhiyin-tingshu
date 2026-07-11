@@ -13,14 +13,13 @@ import co.elastic.clients.elasticsearch.core.search.CompletionSuggest;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.Suggestion;
 import com.alibaba.fastjson.JSON;
+import java.util.ArrayList;
+import java.util.List;
 import com.atguigu.tingshu.album.client.AlbumInfoFeignClient;
 import com.atguigu.tingshu.album.client.CategoryFeignClient;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.PinYinUtils;
-import com.atguigu.tingshu.model.album.AlbumAttributeValue;
-import com.atguigu.tingshu.model.album.AlbumInfo;
-import com.atguigu.tingshu.model.album.BaseCategory3;
-import com.atguigu.tingshu.model.album.BaseCategoryView;
+import com.atguigu.tingshu.model.album.*;
 import com.atguigu.tingshu.model.search.AlbumInfoIndex;
 import com.atguigu.tingshu.model.search.AttributeValueIndex;
 import com.atguigu.tingshu.model.search.SuggestIndex;
@@ -38,11 +37,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.elasticsearch.core.suggest.Completion;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -70,6 +71,97 @@ public class SearchServiceImpl implements SearchService {
     private ElasticsearchClient elasticsearchClient;
     @Autowired
     private SuggestIndexRepository suggestIndexRepository;
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    @Override
+    public List<AlbumInfoIndexVo> findRankingList(Long category1Id, String dimension) {
+        //根据一级分类ID和排序字段从Redis中获取对应的排行榜中的专辑数据列表
+        // 从Redis中获取数据，由于使用的是JSON序列化，需要先获取原始值
+        Object albumObj = redisTemplate.boundHashOps("ranking:" + category1Id).get(dimension);
+        List<AlbumInfoIndex> albuminfoList = new ArrayList<>();
+        
+        // 检查获取到的数据是否为null
+        if (albumObj != null) {
+            // 如果是字符串类型，说明可能是JSON格式
+            if (albumObj instanceof String) {
+                // 尝试将JSON字符串解析为List
+                try {
+                    albuminfoList = JSON.parseArray(albumObj.toString(), AlbumInfoIndex.class);
+                } catch (Exception e) {
+                    // 解析失败，记录错误日志并返回空列表
+                    log.error("解析Redis中的JSON数据失败: " + albumObj.toString(), e);
+                }
+            } 
+            // 如果已经是List类型，直接转换
+            else if (albumObj instanceof List) {
+                albuminfoList = (List<AlbumInfoIndex>) albumObj;
+            }
+        }
+        //将AlbumInfoIndex类型的列表转换成返回给前端的AlbumInfoIndexVo类型的列表
+        List<AlbumInfoIndexVo> albumInfoIndexVoList = albuminfoList.stream().map(albumInfoIndex -> {
+            AlbumInfoIndexVo albumInfoIndexVo = new AlbumInfoIndexVo();
+            BeanUtils.copyProperties(albumInfoIndex, albumInfoIndexVo);
+            return albumInfoIndexVo;
+        }).collect(Collectors.toList());
+        return albumInfoIndexVoList;
+    }
+
+    //更新专辑排行榜
+//    GET /albuminfo/_search
+//{
+//  "query": {
+//    "term": {
+//      "category1Id": {
+//        "value": "1"
+//      }
+//    }
+//  }
+//  ,"sort": [
+//    {
+//      "playStatNum": {
+//        "order": "desc"
+//      }
+//    }
+//  ],
+//  "size": 10
+//}
+    @SneakyThrows
+    @Override
+    public void updateLatelyAlbumRanking() {
+        //1.根据远程调用接口查询mysql数据库获取所有一级分类对应的列表
+        Result<List<BaseCategory1>> result = categoryFeignClient.findAllCategory1();
+        List<BaseCategory1> baseCategory1List = result.getData();
+        Assert.notNull(baseCategory1List, "一级分类列表为空");
+        //定义排序字段数组
+        String[] sortFields = {"hotScore", "playStatNum", "subscribeStatNum", "buyStatNum", "commentStatNum"};
+        //2.对一级分类列表进行遍历，获取一级分类然后排序字段数组嵌套循序遍历，构建对应的DSL语句然后在ES中进行查询，得到排序后的专辑列表
+        baseCategory1List.stream().forEach(baseCategory1 -> {
+            //遍历排序字段，构建DSL语句
+            for(String sortField : sortFields) {
+                //构建查询的DSL请求语句
+                SearchRequest.Builder request = new SearchRequest.Builder();
+                request.index("albuminfo")
+                        .query(q->q.term(t->t.field("category1Id").value(baseCategory1.getId())))
+                        .sort(s->s.field(o->o.field(sortField).order(SortOrder.Desc)))
+                        .size(10);
+                //根据构建好的DSL语句对ES进行查询
+                try {
+                    SearchResponse<AlbumInfoIndex> searchResponse = elasticsearchClient.search(request.build(), AlbumInfoIndex.class);
+                    //从es中的查询结果中获取对应的专辑列表
+                    List<AlbumInfoIndex> albuminfoList = searchResponse.hits().hits().stream().map(hit -> hit.source()).collect(Collectors.toList());
+                    //3.将得到的专辑列表放入Redis的Hash中，key为一级分类，filed是排序字段，value是排序后的列表
+                    // (像排行榜这种不经常变化访问量大的就需要放到缓存中)
+                    //hash中，key为ranking:一级分类，filed为排序字段，value为排序后的专辑列表
+                    String key="ranking:" + baseCategory1.getId();
+                    redisTemplate.opsForHash().put(key, sortField, JSON.toJSONString(albuminfoList));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+    }
+
     //根据输入的关键字返回自动补全的字符串列表
     @SneakyThrows
     @Override

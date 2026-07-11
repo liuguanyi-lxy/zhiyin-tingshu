@@ -33,6 +33,12 @@ public class BaseCategoryServiceImpl extends ServiceImpl<BaseCategory1Mapper, Ba
 
 	@Autowired
 	private BaseAttributeMapper baseAttributeMapper;
+	//获取所有一级分类
+	@Override
+	public List<BaseCategory1> findAllCategory1() {
+		return baseCategory1Mapper.selectList(null);
+	}
+
 	//根据一级分类id在视图base_category_view中查询下面所有二级和三级分类数据
 	/*{
 	一级分类id：  1 (categoryId)

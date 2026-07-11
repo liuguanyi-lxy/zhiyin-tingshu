@@ -3,9 +3,11 @@ package com.atguigu.tingshu.search.api;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.query.search.AlbumIndexQuery;
 import com.atguigu.tingshu.search.service.SearchService;
+import com.atguigu.tingshu.vo.search.AlbumInfoIndexVo;
 import com.atguigu.tingshu.vo.search.AlbumSearchResponseVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -93,6 +95,34 @@ public class SearchApiController {
         //返回一个字符串列表，每个字符串是带有关键字的一个字符串
         List<String> list = searchService.completeSuggest(keyword);
         return Result.ok(list);
+    }
+    /**
+     * 更新排行榜
+     * @return
+     */
+    @SneakyThrows
+    @Operation(summary = "更新所有一级分类下按各种字段排序的排行榜")
+    @GetMapping("updateLatelyAlbumRanking")
+    public Result updateLatelyAlbumRanking() {
+        //  调用服务层方法
+        searchService.updateLatelyAlbumRanking();
+        //  默认返回
+        return Result.ok();
+    }
+    /**
+     * 获取排行榜列表
+     * @param category1Id
+     * @param dimension
+     * @return
+     */
+    @Operation(summary = "根据一级分类ID和排序字段获取排行榜列表")
+    @GetMapping("findRankingList/{category1Id}/{dimension}")
+    public Result<List<AlbumInfoIndexVo>> findRankingList(@PathVariable Long category1Id,
+                    @PathVariable String dimension) {
+        //  调用服务层方法
+        List<AlbumInfoIndexVo> infoIndexVoList = searchService.findRankingList(category1Id, dimension);
+        //  返回结果集
+        return Result.ok(infoIndexVoList);
     }
 }
 
