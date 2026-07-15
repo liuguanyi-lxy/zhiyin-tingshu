@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 @Schema(description = "订单减免明细")
 public class OrderDerateVo {
 
-	@Schema(description = "订单减免类型 1405-专辑折扣 1406-VIP服务折")
+	@Schema(description = "订单减免类型 1405-专辑折扣 1406-VIP服务折扣")
 	private String derateType;
 
 	@Schema(description = "减免金额")

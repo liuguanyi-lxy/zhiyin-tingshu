@@ -19,6 +19,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @Tag(name = "声音管理")
@@ -110,6 +111,21 @@ public class TrackInfoApiController {
 		Page<AlbumTrackListVo> pageParam = new Page(page,limit);
 		IPage<AlbumTrackListVo> pageModel = trackInfoService.findAlbumTrackPage(pageParam,albumId,userId);
 		return Result.ok(pageModel);
+	}
+	//显示可以购买声音集数套餐
+	@LoginVerification
+	@Operation(summary = "获取用户声音分集购买的套餐列表")
+	@GetMapping("/findUserTrackPaidList/{trackId}")
+	public Result<List<Map<String, Object>>> findUserTrackPaidList(@PathVariable Long trackId) {
+		List<Map<String, Object>> list = trackInfoService.findUserTrackPaidList(trackId);
+		return Result.ok(list);
+	}
+	@LoginVerification
+	@Operation(summary = "根据选择本集的声音ID和选择购买的声音数量批量获取下单付费声音列表")
+	@GetMapping("findPaidTrackInfoList/{trackId}/{trackCount}")
+	public Result<List<TrackInfo>> findPaidTrackInfoList(@PathVariable Long trackId, @PathVariable Integer trackCount) {
+		List<TrackInfo> trackInfoList = trackInfoService.findPaidTrackInfoList(trackId,trackCount);
+		return Result.ok(trackInfoList);
 	}
 }
 

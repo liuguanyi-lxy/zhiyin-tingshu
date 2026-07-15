@@ -1,4 +1,4 @@
-package com.atguigu.tingshu.common.RedisCache;
+package com.atguigu.tingshu.common.RedisCache.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

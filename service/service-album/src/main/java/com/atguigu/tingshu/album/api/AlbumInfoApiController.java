@@ -1,6 +1,8 @@
 package com.atguigu.tingshu.album.api;
 
 import com.atguigu.tingshu.album.service.AlbumInfoService;
+import com.atguigu.tingshu.common.constant.RedisConstant;
+import com.atguigu.tingshu.common.execption.GuiguException;
 import com.atguigu.tingshu.common.login.LoginVerification;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
@@ -15,6 +17,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RedissonClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -27,9 +33,12 @@ import java.util.Map;
 @RequestMapping("api/album/albumInfo")
 @SuppressWarnings({"all"})
 public class AlbumInfoApiController {
+    private static final Logger logger = LoggerFactory.getLogger(AlbumInfoApiController.class);
 
 	@Autowired
 	private AlbumInfoService albumInfoService;
+    @Autowired
+    private RedissonClient redissonClient;
 	//保存专辑
 	@LoginVerification
 	@Operation(summary = "保存专辑")
@@ -65,7 +74,19 @@ public class AlbumInfoApiController {
 	@Operation(summary = "根据专辑ID获取专辑信息")
 	@GetMapping("getAlbumInfo/{albumId}")
 	public Result<AlbumInfo> getAlbumInfo(@PathVariable Long albumId) {
+		logger.info("开始查询专辑，ID: {}", albumId);
+		//添加布隆过滤器对查询的专辑进行初步判断，如果查询的专辑ID不在布隆过滤器中则一定不在缓存和数据库中，为了避免缓存穿透直接抛出异常
+		// 注意：布隆过滤器已在应用启动时初始化，并添加了所有专辑ID
+		RBloomFilter<Object> bloomFilter = redissonClient.getBloomFilter(RedisConstant.ALBUM_BLOOM_FILTER);
+		logger.info("获取布隆过滤器，检查专辑ID {} 是否存在", albumId);
+		//布隆过滤器不包含该专辑ID
+		if(!bloomFilter.contains(albumId)) {
+			logger.warn("布隆过滤器中不存在专辑ID: {}，抛出异常", albumId);
+			throw new GuiguException(228,"该专辑不存在"+albumId);
+		}
+		logger.info("布隆过滤器中存在专辑ID: {}，继续查询数据库", albumId);
 		AlbumInfo albumInfo = albumInfoService.getAlbumInfo(albumId);
+		logger.info("从数据库查询到专辑: {}", albumInfo);
 		return Result.ok(albumInfo);
 	}
 	//修改专辑信息

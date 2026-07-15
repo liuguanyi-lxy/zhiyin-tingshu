@@ -33,9 +33,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.math.BigDecimal;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
@@ -56,6 +55,174 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 	private UserInfoFeignClient userInfoFeignClient;
 	@Autowired
 	private AlbumInfoService albumInfoService;
+	//根据选择本集的声音ID和选择购买的声音数量批量获取下单付费声音列表
+	@Override
+	public List<TrackInfo> findPaidTrackInfoList(Long trackId, Integer trackCount) {
+		//1.根据声音ID获取声音对象
+		TrackInfo trackInfo = trackInfoMapper.selectById(trackId);
+		//定义接收选择购买声音列表
+		List<TrackInfo> trackInfoList=new ArrayList<>();
+		//2.根据声音对象中的专辑ID和用户ID查询用户购买过的声音ID列表
+		//trackCount大于0
+		if(trackCount>0){
+			Result<List<Long>> result = userInfoFeignClient.findUserIsPaidTrack(trackInfo.getAlbumId());
+			List<Long> paidTrackIdList = result.getData();
+			//3.获取当前专辑中排在本集后面的声音列表,要排除用户已经购买专辑中声音的ID
+			LambdaQueryWrapper<TrackInfo> queryWrapper = new LambdaQueryWrapper<>();
+			queryWrapper.eq(TrackInfo::getAlbumId,trackInfo.getAlbumId());
+			queryWrapper.gt(TrackInfo::getOrderNum,trackInfo.getOrderNum());
+			queryWrapper.notIn(!CollectionUtils.isEmpty(paidTrackIdList),TrackInfo::getId,paidTrackIdList);
+			//设置查询出来的声音数量为trackCount
+			queryWrapper.last(" limit "+trackCount);
+			trackInfoList = trackInfoMapper.selectList(queryWrapper);
+		}else{
+			//trackCount==0 购买本集
+			trackInfoList.add(trackInfo);
+		}
+		return trackInfoList;
+	}
+
+	//购买声音时显示可以购买声音的各种套餐类型，比如本集、后十集、后二十集之类的
+	@Override
+	public List<Map<String, Object>> findUserTrackPaidList(Long trackId) {
+		//1.根据声音ID获取声音对象
+		TrackInfo trackInfo = trackInfoMapper.selectById(trackId);
+		//2.根据声音ID获取声音的专辑对象
+		AlbumInfo albumInfo = albumInfoMapper.selectById(trackInfo.getAlbumId());
+		//3.远程调用接口，根据专辑ID和用户ID查询用户购买过哪些声音
+		Result<List<Long>> result = userInfoFeignClient.findUserIsPaidTrack(trackInfo.getAlbumId());
+		List<Long> paidTrackIdList = result.getData();
+		//4.获取当前专辑中排在本集后面的声音列表
+		LambdaQueryWrapper<TrackInfo> queryWrapper = new LambdaQueryWrapper<>();
+		queryWrapper.eq(TrackInfo::getAlbumId,trackInfo.getAlbumId());
+		queryWrapper.gt(TrackInfo::getOrderNum,trackInfo.getOrderNum());
+		List<TrackInfo> trackInfoList = trackInfoMapper.selectList(queryWrapper);
+		//5.获取当前专辑中排在本集后面的声音ID列表
+		List<Long> trackIdList = trackInfoList.stream().map(TrackInfo::getId).collect(Collectors.toList());
+		//6.把当前专辑中排在本集后面的声音ID列表去除掉已经购买声音的ID
+		//如果购买声音ID列表为null则可以不进行这步
+		if(!CollectionUtils.isEmpty(paidTrackIdList)){
+			trackIdList.removeAll(paidTrackIdList);
+		}
+		//7.构建点击购买本集后弹出的各种套餐显示内容,每部分由map集合存储，加入到list中
+		List<Map<String, Object>> TrackPaidPlanList = new ArrayList<>();
+		//7.1 购买本集,最后的可购买声音ID列表大小为0
+		if(trackIdList.size()>=0){
+			Map<String, Object> TrackPaidMap = new HashMap<>();
+			//套餐名称
+			TrackPaidMap.put("name","本集");
+			//套餐价格
+			TrackPaidMap.put("price",albumInfo.getPrice());
+			//本集之后选择购买声音集数
+			TrackPaidMap.put("trackCount",0);
+			TrackPaidPlanList.add(TrackPaidMap);
+		}
+		//可购买声音数量大于0小于10
+		if(trackIdList.size()>0&&trackIdList.size()<10){
+			Map<String, Object> TrackPaidMap = new HashMap<>();
+            //套餐名称
+            TrackPaidMap.put("name","后"+trackIdList.size()+"集");
+            //套餐价格
+            TrackPaidMap.put("price",albumInfo.getPrice().multiply(new BigDecimal(trackIdList.size())));
+			//本集之后选择购买声音集数
+			TrackPaidMap.put("trackCount",trackIdList.size());
+			TrackPaidPlanList.add(TrackPaidMap);
+		}
+		//可购买声音数量大于等于10
+		if(trackIdList.size()>=10){
+			Map<String, Object> TrackPaidMap = new HashMap<>();
+			//套餐名称
+			TrackPaidMap.put("name","后10集");
+			//套餐价格
+			TrackPaidMap.put("price",albumInfo.getPrice().multiply(new BigDecimal("10")));
+			//本集之后选择购买声音集数
+			TrackPaidMap.put("trackCount",10);
+			TrackPaidPlanList.add(TrackPaidMap);
+		}
+		//可购买声音数量大于等于10小于20
+		// 后十几集
+		if(trackIdList.size() > 10 && trackIdList.size() < 20) {
+			Map<String, Object> map = new HashMap<>();
+			int count = trackIdList.size();
+			BigDecimal price = albumInfo.getPrice().multiply(new BigDecimal(count));
+			map.put("name", "后"+count+"集");
+			map.put("price", price);
+			map.put("trackCount", count);
+			TrackPaidPlanList.add(map);
+		}
+		// 后20集
+		if(trackIdList.size() >=20) {
+			Map<String, Object> map = new HashMap<>();
+			BigDecimal price = albumInfo.getPrice().multiply(new BigDecimal(20));
+			map.put("name", "后20集");
+			map.put("price", price);
+			map.put("trackCount", 20);
+			TrackPaidPlanList.add(map);
+		}
+
+		//后二十几集
+		if(trackIdList.size() > 20 && trackIdList.size() < 30) {
+			Map<String, Object> map = new HashMap<>();
+			int count = trackIdList.size();
+			BigDecimal price = albumInfo.getPrice().multiply(new BigDecimal(count));
+			map.put("name", "后"+count+"集");
+			map.put("price", price);
+			map.put("trackCount", count);
+			TrackPaidPlanList.add(map);
+		}
+		//后30集
+		if(trackIdList.size() >=30) {
+			Map<String, Object> map = new HashMap<>();
+			BigDecimal price = albumInfo.getPrice().multiply(new BigDecimal(30));
+			map.put("name", "后30集");
+			map.put("price", price);
+			map.put("trackCount", 30);
+			TrackPaidPlanList.add(map);
+		}
+
+		//后三十多集
+		if(trackIdList.size() > 30 && trackIdList.size() < 40) {
+			Map<String, Object> map = new HashMap<>();
+			int count = trackIdList.size();
+			BigDecimal price = albumInfo.getPrice().multiply(new BigDecimal(count));
+			map.put("name", "后"+count+"集");
+			map.put("price", price);
+			map.put("trackCount", count);
+			TrackPaidPlanList.add(map);
+		}
+
+		//后40集
+		if(trackIdList.size() >=40) {
+			Map<String, Object> map = new HashMap<>();
+			BigDecimal price = albumInfo.getPrice().multiply(new BigDecimal(40));
+			map.put("name", "后40集");
+			map.put("price", price);
+			map.put("trackCount", 40);
+			TrackPaidPlanList.add(map);
+		}
+		//后四十多集
+		if(trackIdList.size() > 40 && trackIdList.size() < 50) {
+			Map<String, Object> map = new HashMap<>();
+			int count = trackIdList.size();
+			BigDecimal price = albumInfo.getPrice().multiply(new BigDecimal(count));
+			map.put("name", "后"+count+"集");
+			map.put("price", price);
+			map.put("trackCount", count);
+			TrackPaidPlanList.add(map);
+		}
+		// 最多购买50集;
+		if(trackIdList.size() >=50) {
+			Map<String, Object> map = new HashMap<>();
+			BigDecimal price = albumInfo.getPrice().multiply(new BigDecimal(50));
+			map.put("name", "后50集");
+			map.put("price", price);
+			map.put("trackCount", 50);
+			TrackPaidPlanList.add(map);
+		}
+		return TrackPaidPlanList;
+	}
+
+
 	//更新专辑和声音的播放量
 	@Override
 	public void updateStat(TrackStatMqVo trackStatMqVo) {
@@ -134,7 +301,10 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 				//获取专辑对应的试听集数
 				Integer FreeNum = albumInfo.getTracksForFree();
 					//获取专辑中声音的所有ID，远程调用接口，查询用户是否购买专辑或者专辑中的某些声音，返回的是map，key为声音ID，value为是否购买的标志
-					List<Long> TrackIdList = albumTrackListVoList.stream().map(item -> item.getTrackId()).collect(Collectors.toList());
+					List<Long> TrackIdList = albumTrackListVoList
+							.stream()
+							.map(item -> item.getTrackId())
+							.collect(Collectors.toList());
 					Result<Map<Long, Integer>> mapResult = userInfoFeignClient.userIsPaidTrack(userId, TrackIdList);
 					Map<Long, Integer> TrackPaidMap = mapResult.getData();
 					Assert.notNull(TrackPaidMap,"用户是否购买专辑或者声音信息不存在");

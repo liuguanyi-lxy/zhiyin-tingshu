@@ -4,7 +4,7 @@ import com.atguigu.tingshu.common.result.ResultCodeEnum;
 import lombok.Data;
 
 /**
- * 自定义全局异常类
+ * 自定义全局异常类,自定义的异常被全局异常拦截器拦截，将自定义的错误码和错误信息传递给前端，前端在根据此信息做出对应响应
  *
  */
 @Data

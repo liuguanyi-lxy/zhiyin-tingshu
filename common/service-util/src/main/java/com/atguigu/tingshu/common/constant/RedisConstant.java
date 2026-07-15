@@ -1,7 +1,7 @@
 package com.atguigu.tingshu.common.constant;
 
 public class RedisConstant {
-
+    //专辑服务前缀
     public static final String ALBUM_INFO_PREFIX = "album:info:";
     public static final String ALBUM_LOCK_SUFFIX = "album:lock:";
 
@@ -39,7 +39,9 @@ public class RedisConstant {
     public static final String USER_LOGIN_REFRESH_KEY_PREFIX = "user:login:refresh:";
     public static final int USER_LOGIN_KEY_TIMEOUT = 60 * 60 * 24 * 100;
     public static final int USER_LOGIN_REFRESH_KEY_TIMEOUT = 60 * 60 * 24 * 365;
-
+    //排行榜时前缀
     public static final String RANKING_KEY_PREFIX = "ranking:";
     public static final String ALBUM_STAT_ENDTIME = "album:stat:endTime";
+    //用户订单前缀
+    public static final String USER_ORDER_KEY_PREFIX = "user:trade:";
 }

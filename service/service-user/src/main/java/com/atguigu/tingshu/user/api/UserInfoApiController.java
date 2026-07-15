@@ -59,5 +59,26 @@ public class UserInfoApiController {
 		// 返回map 集合数据
 		return Result.ok(map);
 	}
+	//用户是否购买指定ID的专辑
+	@LoginVerification
+	@Operation(summary = "根据专辑ID和被FeignInterceptor拦截后传入的用户ID判断用户是否购买专辑")
+	@GetMapping("isPaidAlbum/{albumId}")
+	public Result<Boolean> isPaidAlbum(@PathVariable("albumId") Long albumId) {
+		Long userId = AuthContextHolder.getUserId();
+		Boolean isPaid = userInfoService.isPaidAlbum(albumId,userId);
+		return Result.ok(isPaid);
+	}
+	//根据专辑id和用户ID获取用户支付过的声音id列表
+	@LoginVerification
+	@Operation(summary = "根据专辑id和用户ID获取用户支付过的声音id列表")
+	@GetMapping("findUserPaidTrackList/{albumId}")
+	public Result<List<Long>> findUserIsPaidTrack(@PathVariable Long albumId){
+		// 获取用户Id
+		Long userId = AuthContextHolder.getUserId();
+		// 根据用户Id 与 专辑Id 获取到已购买的声音Id 集合列表
+		List<Long> trackIdList = this.userInfoService.findPaidUserTrackList(userId,albumId);
+		// 返回声音Id 集合数据
+		return Result.ok(trackIdList);
+	}
 }
 

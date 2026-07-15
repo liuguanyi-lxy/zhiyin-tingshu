@@ -14,10 +14,10 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Data
-@Schema(description = "订单对象")
+@Schema(description = "订单对象,封装订单详细数据")
 public class OrderInfoVo {
 
-    @NotEmpty(message = "交易号不能为空")
+    @NotEmpty(message = "交易流水号不能为空，用于存储到Redis中，处理订单时查询流水号，存在则为第一次交易，否则取消")
     @Schema(description = "交易号", required = true)
     private String tradeNo;
 
@@ -70,6 +70,6 @@ public class OrderInfoVo {
 
     @Schema(description = "时间戳", required = true)
     private Long timestamp;
-    @Schema(description = "签名", required = true)
+    @Schema(description = "签名，该对象被MD5加密后的字符串，作为暗文数据传输，用于接收端判断明文数据是否被篡改", required = true)
     private String sign;
 }

@@ -6,6 +6,8 @@ import com.atguigu.tingshu.album.mapper.AlbumStatMapper;
 import com.atguigu.tingshu.album.mapper.TrackInfoMapper;
 import com.atguigu.tingshu.album.service.AlbumAttributeValueService;
 import com.atguigu.tingshu.album.service.AlbumInfoService;
+import com.atguigu.tingshu.common.RedisCache.annotation.RedisCache;
+import com.atguigu.tingshu.common.constant.RedisConstant;
 import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
 import com.atguigu.tingshu.common.rabbit.service.RabbitService;
@@ -149,6 +151,8 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 		}
 	}
 	//根据专辑ID获取专辑信息
+	//直接使用专辑ID作为key容易与其他数据的key重复所以添加前缀
+	@RedisCache(prefix = RedisConstant.ALBUM_INFO_PREFIX)
 	@Override
 	public AlbumInfo getAlbumInfo(Long albumId) {
 		//需要查询专辑基本信息表album_info和专辑标签关系表album_attribute_value

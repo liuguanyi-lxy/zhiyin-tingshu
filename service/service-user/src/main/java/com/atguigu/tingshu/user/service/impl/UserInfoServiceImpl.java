@@ -38,6 +38,28 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 	private UserPaidAlbumMapper userPaidAlbumMapper;
 	@Autowired
 	private UserPaidTrackMapper userPaidTrackMapper;
+	//根据专辑ID和用户ID查询用户购买过哪些声音，返回这些声音ID列表
+	@Override
+	public List<Long> findPaidUserTrackList(Long userId, Long albumId) {
+		LambdaQueryWrapper<UserPaidTrack> queryWrapper = new LambdaQueryWrapper<>();
+		queryWrapper.eq(UserPaidTrack::getUserId,userId).eq(UserPaidTrack::getAlbumId,albumId);
+		List<UserPaidTrack> userPaidTracks = userPaidTrackMapper.selectList(queryWrapper);
+		List<Long> PaidTrackIdList = userPaidTracks.stream()
+				.map(UserPaidTrack::getTrackId)
+				.collect(Collectors.toList());
+		return PaidTrackIdList;
+	}
+
+	//根据专辑ID和用户ID判断专辑是否被购买
+	@Override
+	public Boolean isPaidAlbum(Long albumId, Long userId) {
+		//查询user-paid-album表，根据用户ID和专辑ID查询是否有记录，有则说明购买过该专辑
+		LambdaQueryWrapper<UserPaidAlbum> queryWrapper = new LambdaQueryWrapper<>();
+		queryWrapper.eq(UserPaidAlbum::getAlbumId,albumId).eq(UserPaidAlbum::getUserId,userId);
+		boolean exists = userPaidAlbumMapper.exists(queryWrapper);
+		return exists;
+	}
+
 	//根据用户ID、专辑ID、声音ID列表查询user_paid_album、user_paid_track判断声音是否被购买
 	@Override
 	public Map<Long, Integer> userIsPaidTrack(Long userId, Long albumId, List<Long> trackIdList) {
