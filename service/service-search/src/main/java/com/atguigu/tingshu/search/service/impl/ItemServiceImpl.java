@@ -29,6 +29,7 @@ public class ItemServiceImpl implements ItemService {
     private CategoryFeignClient categoryFeignClient;
     @Autowired
     private UserInfoFeignClient userInfoFeignClient;
+    //根据专辑id查询专辑详情信息
     @Override
     public Map<String, Object> getItem(Long albumId) {
         //创建一个map集合存储专辑详情数据

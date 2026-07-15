@@ -9,7 +9,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-@Schema(description = "OrderDetail")
+@Schema(description = "订单结算关于商品信息明细")
 public class OrderDetailVo {
 
 	@NotNull(message = "付费项目id不能为空")
@@ -35,7 +35,7 @@ public class OrderDetailVo {
 	 * message：同上，有默认提示
 	 */
 	@DecimalMin(value = "0.00", inclusive = false, message = "付费项目价格必须大于0.00")
-	@DecimalMax(value = "9999.99", inclusive = true, message = "付费项目价格必须大于9999.99")
+	@DecimalMax(value = "9999.99", inclusive = true, message = "付费项目价格必须小于9999.99")
 	@Digits(integer = 4, fraction = 2)
 	@Schema(description = "付费项目价格")
 	@JsonSerialize(using = Decimal2Serializer.class)

@@ -10,6 +10,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
+import java.util.Map;
+
 public interface TrackInfoService extends IService<TrackInfo> {
     //保存声音信息
     void saveTrackInfo(TrackInfoVo trackInfoVo);
@@ -23,4 +26,8 @@ public interface TrackInfoService extends IService<TrackInfo> {
     IPage<AlbumTrackListVo> findAlbumTrackPage(Page<AlbumTrackListVo> pageParam, Long albumId, Long userId);
     //更新声音播放量
     void updateStat(TrackStatMqVo trackStatMqVo);
+    //购买声音时显示可以购买声音的各种套餐类型，比如本集、后十集、后二十集之类的
+    List<Map<String, Object>> findUserTrackPaidList(Long trackId);
+    //根据选择本集的声音ID和选择购买的声音数量批量获取下单付费声音列表
+    List<TrackInfo> findPaidTrackInfoList(Long trackId, Integer trackCount);
 }

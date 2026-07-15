@@ -3,6 +3,7 @@ package com.atguigu.tingshu.order.helper;
 import com.atguigu.tingshu.common.execption.GuiguException;
 import com.atguigu.tingshu.common.result.ResultCodeEnum;
 import com.atguigu.tingshu.common.util.MD5;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
@@ -11,9 +12,10 @@ import java.util.Map;
 import java.util.TreeMap;
 
 @Slf4j
+@Schema(description="签名工具类")
 public class SignHelper {
 
-    private static String signKey = "atguigu123";
+    private static String signKey = "lxy123456";
     /**
      * 验签方法
      * @param parameterMap

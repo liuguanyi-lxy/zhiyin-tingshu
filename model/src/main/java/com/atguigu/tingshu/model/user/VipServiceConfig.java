@@ -9,13 +9,13 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-@Schema(description = "VipServiceConfig")
+@Schema(description = "封装购买VIP的套餐信息")
 @TableName("vip_service_config")
 public class VipServiceConfig extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
 
-	@Schema(description = "服务名称")
+	@Schema(description = "套餐名称")
 	@TableField("name")
 	private String name;
 
@@ -31,15 +31,15 @@ public class VipServiceConfig extends BaseEntity {
 	@TableField("intro")
 	private String intro;
 
-	@Schema(description = "服务简介，富文本")
+	@Schema(description = "套餐简介，富文本")
 	@TableField("rich_intro")
 	private String richIntro;
 
-	@Schema(description = "服务月数")
+	@Schema(description = "套餐月数")
 	@TableField("service_month")
 	private Integer serviceMonth;
 
-	@Schema(description = "服务图片url")
+	@Schema(description = "套餐图片url")
 	@TableField("image_url")
 	private String imageUrl;
 
