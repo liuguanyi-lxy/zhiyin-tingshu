@@ -41,11 +41,12 @@ public enum ResultCodeEnum {
 
     NO_BUY_NOT_SEE(225, "未购买不能观看"),
 
-    REPEAT_BUY_ERROR(226, "重复购买，请确认后会下单"),
+    REPEAT_BUY_ERROR(226, "重复购买，请不要重复点击立即结算"),
 
     EXIST_NO_EXPIRE_LIVE(227, "当前存在未过期直播"),
     UPLOAD_ERROR(228, "声音上传失败"),
-    DATA_DELETED(229, "数据已删除")
+    DATA_DELETED(229, "数据已删除"),
+    USER_INFO_UPDATE_ERROR(230, "用户信息更新失败"),
     ;
 
     private Integer code;

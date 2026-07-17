@@ -9,7 +9,7 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-@Schema(description = "UserVipService")
+@Schema(description = "记录用户购买vip记录")
 @TableName("user_vip_service")
 public class UserVipService extends BaseEntity {
 

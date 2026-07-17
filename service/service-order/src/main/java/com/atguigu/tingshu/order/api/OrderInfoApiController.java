@@ -10,10 +10,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
 
 @Tag(name = "订单管理")
 @RestController
@@ -23,6 +24,11 @@ public class OrderInfoApiController {
 
 	@Autowired
 	private OrderInfoService orderInfoService;
+	/**
+     * 根据购买界面给的选购信息，构建结算界面的订单明细，最后返回订单信息给支付界面
+     * @param tradeVo
+     * @return
+     */
 	@LoginVerification
 	@Operation(summary = "根据购买界面给的选购信息，构建结算界面的订单明细，最后返回订单信息给支付界面")
 	@PostMapping("trade")
@@ -30,6 +36,24 @@ public class OrderInfoApiController {
 		Long userId = AuthContextHolder.getUserId();
 		OrderInfoVo orderInfoVo = orderInfoService.trade(tradeVo,userId);
 		return Result.ok(orderInfoVo);
+	}
+	/**
+	 * //立即结算后进入支付界面选择支付方式后生成订单
+	 * @param orderInfoVo
+	 * @return
+	 */
+	@LoginVerification
+	@Operation(summary = "立即结算后进入支付界面选择支付方式后生成订单")
+	@PostMapping("submitOrder")
+	public Result<Map<String, Object>> submitOrder(@RequestBody @Validated OrderInfoVo orderInfoVo) {
+		//  获取到用户Id
+		Long userId = AuthContextHolder.getUserId();
+		//  调用服务层方法
+		String orderNo = orderInfoService.submitOrder(orderInfoVo, userId);
+		Map<String, Object> map = new HashMap();
+		map.put("orderNo", orderNo);
+		//	返回数据
+		return Result.ok(map);
 	}
 }
 

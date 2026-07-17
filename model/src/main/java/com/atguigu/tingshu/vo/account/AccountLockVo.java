@@ -6,7 +6,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-@Schema(description = "锁定金额对象")
+@Schema(description = "传递给account微服务判断余额扣减余额以及添加账号购买记录")
 public class AccountLockVo {
 
 	@Schema(description = "订单号")
@@ -15,10 +15,10 @@ public class AccountLockVo {
 	@Schema(description = "用户id")
 	private Long userId;
 
-	@Schema(description = "锁定金额")
+	@Schema(description = "订单金额")
 	private BigDecimal amount;
 
-	@Schema(description = "锁定内容")
+	@Schema(description = "订单内容")
 	private String content;
 
 }

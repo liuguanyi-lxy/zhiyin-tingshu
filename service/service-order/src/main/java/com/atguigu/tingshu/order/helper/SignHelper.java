@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 @Slf4j
-@Schema(description="签名工具类")
+@Schema(description="签名工具类,校验传入的map中的明文数据和生成明文数据加密后的签名")
 public class SignHelper {
 
     private static String signKey = "lxy123456";
@@ -22,6 +22,7 @@ public class SignHelper {
      */
     public static void checkSign(Map<String, Object> parameterMap){
         //校验签名时间
+        //获取订单信息的时间戳
         Long remoteTimestamp = (Long)parameterMap.get("timestamp");
         if(StringUtils.isEmpty(remoteTimestamp)){
             throw new GuiguException(ResultCodeEnum.SIGN_ERROR);
@@ -32,14 +33,16 @@ public class SignHelper {
             throw new GuiguException(ResultCodeEnum.SIGN_OVERDUE);
         }
 
-        //校验签名
+        //获取传入的加密后的签名
         String signRemote = (String)parameterMap.get("sign");
-
+        //将传入的明文数据进行加密
         String signLocal = getSign(parameterMap);
+        log.info("本地加密后的签名：" + signLocal);
+        //传入的签名为null则报错
         if(StringUtils.isEmpty(signRemote)){
             throw new GuiguException(ResultCodeEnum.SIGN_ERROR);
         }
-
+        //比较传入的加密后的签名和本地加密后的签名是否一致
         if(!signRemote.equals(signLocal)){
             throw new GuiguException(ResultCodeEnum.SIGN_ERROR);
         }
@@ -51,7 +54,7 @@ public class SignHelper {
      * @return
      */
     public static String getSign(Map<String, Object> parameterMap) {
-        //去掉sign参数
+        //去掉明文数据的sign参数
         if(parameterMap.containsKey("sign")) {
             parameterMap.remove("sign");
         }

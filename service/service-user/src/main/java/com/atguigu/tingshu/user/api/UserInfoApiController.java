@@ -7,6 +7,7 @@ import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.user.UserInfo;
 import com.atguigu.tingshu.user.service.UserInfoService;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
+import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -79,6 +80,19 @@ public class UserInfoApiController {
 		List<Long> trackIdList = this.userInfoService.findPaidUserTrackList(userId,albumId);
 		// 返回声音Id 集合数据
 		return Result.ok(trackIdList);
+	}
+	/**
+	 * 订单生成时添加用户购买记录
+	 * @param userPaidRecordVo
+	 * @return
+	 */
+	@Operation(summary = "订单生成时添加用户购买记录")
+	@PostMapping("/savePaidRecord")
+	public Result savePaidRecord(@RequestBody UserPaidRecordVo userPaidRecordVo){
+		// 调用服务层方法.
+		userInfoService.savePaidRecord(userPaidRecordVo);
+		// 默认返回
+		return Result.ok();
 	}
 }
 
