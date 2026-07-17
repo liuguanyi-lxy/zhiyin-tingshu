@@ -9,7 +9,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-@Schema(description = "UserAccountDetail")
+@Schema(description = "账户详情表，记录账户消费记录")
 @TableName("user_account_detail")
 public class UserAccountDetail extends BaseEntity {
 
@@ -19,7 +19,7 @@ public class UserAccountDetail extends BaseEntity {
 	@TableField("user_id")
 	private Long userId;
 
-	@Schema(description = "交易标题")
+	@Schema(description = "交易的商品标题")
 	@TableField("title")
 	private String title;
 

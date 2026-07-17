@@ -9,7 +9,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-@Schema(description = "OrderDetail")
+@Schema(description = "订单详情对象，映射order_detail表")
 @TableName("order_detail")
 public class OrderDetail extends BaseEntity {
 

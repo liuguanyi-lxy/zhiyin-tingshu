@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Data
-@Schema(description = "OrderInfo")
+@Schema(description = "封装订单信息的实体类，映射的是order_info表")
 @TableName("order_info")
 public class OrderInfo extends BaseEntity {
 
@@ -20,7 +20,7 @@ public class OrderInfo extends BaseEntity {
 	@TableField("user_id")
 	private Long userId;
 
-	@Schema(description = "订单标题")
+	@Schema(description = "订单商品标题")
 	@TableField("order_title")
 	private String orderTitle;
 

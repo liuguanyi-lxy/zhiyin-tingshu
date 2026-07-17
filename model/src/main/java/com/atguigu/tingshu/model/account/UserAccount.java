@@ -9,7 +9,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-@Schema(description = "UserAccount")
+@Schema(description = "记录用户账户数据")
 @TableName("user_account")
 public class UserAccount extends BaseEntity {
 

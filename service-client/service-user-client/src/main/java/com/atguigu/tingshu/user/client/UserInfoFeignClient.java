@@ -3,6 +3,7 @@ package com.atguigu.tingshu.user.client;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.user.client.impl.UserInfoDegradeFeignClient;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
+import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,4 +51,11 @@ public interface UserInfoFeignClient {
      */
     @GetMapping("api/user/userInfo/findUserPaidTrackList/{albumId}")
     public Result<List<Long>> findUserIsPaidTrack(@PathVariable Long albumId);
+    /**
+     * 处理用户购买记录
+     * @param userPaidRecordVo
+     * @return
+     */
+    @PostMapping("api/user/userInfo/savePaidRecord")
+    public Result savePaidRecord(@RequestBody UserPaidRecordVo userPaidRecordVo);
 }

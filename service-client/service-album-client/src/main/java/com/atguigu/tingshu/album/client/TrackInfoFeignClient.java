@@ -20,4 +20,11 @@ public interface TrackInfoFeignClient {
     //根据选择本集的声音ID和选择购买的声音数量批量获取下单付费声音列表
     @GetMapping("api/album/trackInfo/findPaidTrackInfoList/{trackId}/{trackCount}")
     public Result<List<TrackInfo>> findPaidTrackInfoList(@PathVariable Long trackId, @PathVariable Integer trackCount);
+    /**
+     * 根据声音ID获取声音信息
+     * @param trackId
+     * @return
+     */
+    @GetMapping("api/album/trackInfo/getTrackInfo/{trackId}")
+    public Result getTrackInfo(@PathVariable("trackId") Long trackId);
 }
