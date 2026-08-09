@@ -31,11 +31,21 @@ public class UserAccountApiController {
 		// 调用服务层方法
 		return Result.ok(userAccountService.getAvailableAmount(AuthContextHolder.getUserId()));
 	}
-	//,并且添加对应的购买记录
-	@Operation(summary = ",并且添加对应的购买记录")
+
+	//检查账户余额，充足则扣减余额并且添加对应的购买记录
+	@Operation(summary = "检查账户余额，充足则扣减余额并且添加对应的购买记录")
 	@PostMapping("checkAndDeduct")
 	Result checkAndDeduct(@RequestBody AccountLockVo accountDeductVo) {
-		userAccountService.checkAndDeduct(accountDeductVo);
+		Result result = userAccountService.checkAndDeduct(accountDeductVo);
+		return result;
+	}
+	//根据用户ID在account数据库初始化账户
+	@Operation(summary = "根据用户ID在account数据库初始化账户")
+	@PostMapping("addUserAccount/{userId}")
+	public Result addUserAccount(@PathVariable Long userId) {
+		if(userId != null) {
+			userAccountService.addUserAccount(userId);
+		}
 		return Result.ok();
 	}
 }

@@ -56,7 +56,7 @@ public class WxLoginApiController {
         wrapper.eq(UserInfo::getWxOpenId,openid);
         UserInfo userInfo = userInfoService.getOne(wrapper);
 
-        //如果第一次登录，添加用户信息，发送mq消息初始化账户
+        //如果第一次登录，向user数据库添加用户信息，发送mq消息在account数据库中初始化账户
         if (userInfo == null) {
             //添加用户信息
             userInfo = new UserInfo();
@@ -66,11 +66,13 @@ public class WxLoginApiController {
             userInfo.setAvatarUrl("https://oss.aliyuncs.com/aliyun_id_photo_bucket/default_handsome.jpg");
             //openid
             userInfo.setWxOpenId(openid);
-            //调用方法添加
-            userInfoService.save(userInfo);
-
-            //发送mq消息给service-account微服务异步初始化账户
-            rabbitService.sendMessage(MqConst.EXCHANGE_USER, MqConst.ROUTING_USER_REGISTER, userInfo.getId());
+            //用户信息的添加和账户的初始化
+            userInfoService.saveUserAndInitAccount(userInfo);
+//            //调用方法添加
+//            userInfoService.save(userInfo);
+//
+//            //发送mq消息给service-account微服务异步初始化账户
+//            rabbitService.sendMessage(MqConst.EXCHANGE_USER, MqConst.ROUTING_USER_REGISTER, userInfo.getId());
         }
 
         //3 登录后需要生成token和获取用户信息，然后把数据放到redis里面，缓存用户登录信息

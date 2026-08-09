@@ -1,5 +1,6 @@
 package com.atguigu.tingshu.user.service.impl;
 
+import com.atguigu.tingshu.account.client.UserAccountFeignClient;
 import com.atguigu.tingshu.album.client.TrackInfoFeignClient;
 import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.execption.GuiguException;
@@ -9,12 +10,15 @@ import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.model.user.*;
 import com.atguigu.tingshu.user.mapper.*;
 import com.atguigu.tingshu.user.service.UserInfoService;
+import com.atguigu.tingshu.user.strategy.ItemTypeStrategy;
+import com.atguigu.tingshu.user.strategy.StrategyContext;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import io.seata.spring.annotation.GlobalTransactional;
 import lombok.extern.slf4j.Slf4j;
 import org.joda.time.LocalDateTime;
 import org.springframework.beans.BeanUtils;
@@ -33,7 +37,7 @@ import static com.atguigu.tingshu.common.constant.SystemConstant.TRACK_NOT_BUY;
 
 @Slf4j
 @Service
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({"unchecked", "rawtypes"}) // 使用@SuppressWarnings注解来抑制编译器警告
 public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> implements UserInfoService {
 
 	@Autowired
@@ -51,10 +55,46 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
 	@Autowired
 	private UserVipServiceMapper userVipServiceMapper;
+
+	@Autowired
+	private StrategyContext strategyContext;
+	@Autowired
+	private UserAccountFeignClient userAccountFeignClient;
+	//保存用户信息和初始化账户信息
+	//分布式事务注解，对多个数据库的多张表进行操作，要么都成功提交要么都回滚
+	@GlobalTransactional
 	@Override
-	//对多张表进行修改，如果对其中一个表的操作出现异常就需要回滚对其他表的操作
+	public void saveUserAndInitAccount(UserInfo userInfo) {
+		//新创建的用户保存用户信息
+		userInfoMapper.insert(userInfo);
+		//远程调用account微服务的接口，初始化账户信息
+		userAccountFeignClient.addUserAccount(userInfo.getId());
+	}
+
+	//更新数据库中用户VIP到期的用户状态
+	@Override
+	public void updateVipExpireStatus() {
+		//	获取到当前时间
+		userInfoMapper.updateIsVip();
+	}
+
+	/**
+	 * 处理用户购买记录（虚拟物品发货）
+	 *userPaidRecordVo.getItemType()  1001  1002  1003
+	 * @param userPaidRecordVo 购买记录VO
+	 */
+	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public void savePaidRecord(UserPaidRecordVo userPaidRecordVo) {
+		//从策略环境对象中获取对应的策略实现对象
+		ItemTypeStrategy strategy = strategyContext.getStrategy(userPaidRecordVo.getItemType());
+		//执行策略对象添加用户支付记录的任务
+		strategy.savePaidRecord(userPaidRecordVo);
+	}
+
+	//对多张表进行修改，如果对其中一个表的操作出现异常就需要回滚对其他表的操作
+	@Transactional(rollbackFor = Exception.class)
+	public void savePaidRecord2(UserPaidRecordVo userPaidRecordVo) {
 		//  根据购买类型判断向哪张表插入数据.
 		//购买的是专辑
 		if (userPaidRecordVo.getItemType().equals(SystemConstant.ORDER_ITEM_TYPE_ALBUM)){

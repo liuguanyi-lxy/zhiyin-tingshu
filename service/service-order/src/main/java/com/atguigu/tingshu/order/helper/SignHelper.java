@@ -24,6 +24,7 @@ public class SignHelper {
         //校验签名时间
         //获取订单信息的时间戳
         Long remoteTimestamp = (Long)parameterMap.get("timestamp");
+        log.info("传入的订单信息的时间戳：" + remoteTimestamp);
         if(StringUtils.isEmpty(remoteTimestamp)){
             throw new GuiguException(ResultCodeEnum.SIGN_ERROR);
         }
@@ -35,6 +36,8 @@ public class SignHelper {
 
         //获取传入的加密后的签名
         String signRemote = (String)parameterMap.get("sign");
+        log.info("传入的加密后的签名：" + signRemote);
+        log.info("传入的订单信息：" + parameterMap);
         //将传入的明文数据进行加密
         String signLocal = getSign(parameterMap);
         log.info("本地加密后的签名：" + signLocal);

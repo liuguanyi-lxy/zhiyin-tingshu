@@ -29,7 +29,11 @@ import com.atguigu.tingshu.vo.order.OrderInfoVo;
 import com.atguigu.tingshu.vo.order.TradeVo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import io.seata.spring.annotation.GlobalTransactional;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBlockingQueue;
 import org.redisson.api.RDelayedQueue;
@@ -72,6 +76,50 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     private OrderDetailMapper orderDetailMapper;
     @Autowired
     private RedissonClient redissonClient;
+
+    //根据订单编号修改订单状态（已经支付），远程调用添加用户购买记录
+    @Override
+    public void updateOrderSuccess(String orderNo) {
+        //根据订单编号修改订单状态（已经支付）
+        //根据订单编号查询订单对象
+        OrderInfo orderInfo = this.getOrderInfoByOrderNo(orderNo);
+        //订单状态是未支付修改
+        if (orderInfo.getOrderStatus().equals(SystemConstant.ORDER_STATUS_UNPAID)) {
+            //订单对象设置订单状态值为已支付
+            //SystemConstant.ORDER_STATUS_PAID
+            orderInfo.setOrderStatus(SystemConstant.ORDER_STATUS_PAID);
+            //调用方法进行修改
+            orderInfoMapper.updateById(orderInfo);
+        }
+
+        //远程调用添加用户购买记录
+        UserPaidRecordVo userPaidRecordVo = new UserPaidRecordVo();
+        userPaidRecordVo.setOrderNo(orderNo);
+        userPaidRecordVo.setUserId(orderInfo.getUserId());
+        userPaidRecordVo.setItemType(orderInfo.getItemType());
+        List<Long> itemIdList = orderInfo.getOrderDetailList()
+                .stream()
+                .map(OrderDetail::getItemId)
+                .collect(Collectors.toList());
+        userPaidRecordVo.setItemIdList(itemIdList);
+        //远程调用用户微服务，添加用户购买记录
+        userInfoFeignClient.savePaidRecord(userPaidRecordVo);
+    }
+
+    //进入用户主页获取用户订单列表，分页查询
+    @Override
+    public IPage<OrderInfo> findUserPage(Page<OrderInfo> pageParam, Long userId) {
+        //  调用mapper 层方法
+        IPage<OrderInfo> infoIPage = orderInfoMapper.selectUserPage(pageParam,userId);
+        infoIPage.getRecords().forEach(item->{
+            //  设置状态名
+            item.setOrderStatusName(getOrderStatusName(item.getOrderStatus()));
+            item.setPayWayName(getPayWayName(item.getPayWay()));
+        });
+        return infoIPage;
+    }
+
+
     //取消订单
     //调用方法，根据orderId取消订单
     @Override
@@ -84,7 +132,8 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         }
     }
 
-    //立即结算后进入支付界面选择支付方式后生成订单
+    //立即结算后进入支付界面选择支付方式后提交订单
+    @GlobalTransactional
     @Override
     public String submitOrder(OrderInfoVo orderInfoVo, Long userId) {
         //1.从结算界面获取订单签名sign，将orderInfoVo转为map，通过SignHelper工具类将map转为字符串，与结算界面获取的sign进行比较
@@ -92,7 +141,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         String jsonString = JSON.toJSONString(orderInfoVo);
         Map<String, Object> map = JSON.parseObject(jsonString, Map.class);
         //因为结算界面给订单默认添加的是微信支付，所以我们这里也要设置为微信支付
-        map.put("payType", SystemConstant.ORDER_PAY_WAY_WEIXIN);
+        map.put("payWay", SystemConstant.ORDER_PAY_WAY_WEIXIN);
         //使用SignHelper工具类对map进行校验,有问题则会抛出异常
         SignHelper.checkSign(map);
         //2.判断订单信息是否被重复提交
@@ -141,7 +190,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
             accountLockVo.setContent(orderInfoVo.getOrderDetailVoList().get(0).getItemName());
             //远程调用account微服务接口,根据返回结果的状态码判断是否余额充足,不充足则抛出异常,并且对账户数据库的相关数据进行添加修改
             Result result = userAccountFeignClient.checkAndDeduct(accountLockVo);
-            if(result.getCode()== ResultCodeEnum.ACCOUNT_LESS.getCode()){
+            if(result.getCode().equals(ResultCodeEnum.ACCOUNT_LESS.getCode())){
                 throw new GuiguException(ResultCodeEnum.ACCOUNT_LESS);
             }
 
@@ -162,7 +211,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
             userPaidRecordVo.setItemIdList(itemIdList);
             //远程调用用户微服务接口，用户信息表、用户购买专辑表、用户购买声音表可能添加记录
             Result savePaidRecordResult = userInfoFeignClient.savePaidRecord(userPaidRecordVo);
-            if(savePaidRecordResult.getCode()==ResultCodeEnum.USER_INFO_UPDATE_ERROR.getCode()){
+            if(savePaidRecordResult.getCode().equals(ResultCodeEnum.USER_INFO_UPDATE_ERROR.getCode())){
                 throw new GuiguException(ResultCodeEnum.USER_INFO_UPDATE_ERROR);
             }
         }
@@ -171,7 +220,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     }
     //生成订单，未支付状态,向order数据库三个表添加数据
     private OrderInfo generateOrder(OrderInfoVo orderInfoVo, Long userId, String orderNo) {
-        //order_info: 订单基本信息
+        //1.order_info: 订单基本信息
         OrderInfo orderInfo = new OrderInfo();
         BeanUtils.copyProperties(orderInfoVo, orderInfo);
         orderInfo.setOrderNo(orderNo);//订单编号
@@ -181,12 +230,12 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         orderInfo.setOrderTitle(itemName);
         //userId
         orderInfo.setUserId(userId);
-        //订单状态 0901-正常 0902-已支付 0903-已取消
+        //订单状态 0901-未支付 0902-已支付 0903-已取消,初始订单状态是未支付
         orderInfo.setOrderStatus(SystemConstant.ORDER_STATUS_UNPAID);
         //调用方法
         orderInfoMapper.insert(orderInfo);
 
-        //order_detail：订单明细
+        //2.order_detail：订单明细
         if (!CollectionUtils.isEmpty(orderInfoVo.getOrderDetailVoList())) {
             orderInfoVo.getOrderDetailVoList().forEach(orderDetailVo -> {
                 OrderDetail orderDetail = new OrderDetail();
@@ -196,7 +245,7 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
             });
         }
 
-        //order_derate：优惠明细
+        //3.order_derate：优惠明细
         if (!CollectionUtils.isEmpty(orderInfoVo.getOrderDerateVoList())) {
             orderInfoVo.getOrderDerateVoList().forEach(orderDerateVo -> {
                 OrderDerate orderDerate = new OrderDerate();
@@ -206,17 +255,87 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
             });
         }
 
-        //如果不是余额支付，就是微信支付，发送延迟消息，30分钟内未完成支付就会取消订单
+        //4.微信支付，发送延迟消息，30分钟内未完成支付就会取消订单
         //1101-微信 1102-支付宝 1103-账户余额"
         String payWay = orderInfoVo.getPayWay();
-        if(!SystemConstant.ORDER_PAY_ACCOUNT.equals(payWay)) {
+        if(SystemConstant.ORDER_PAY_WAY_WEIXIN.equals(payWay)) {
             //发送延迟消息，30分钟不支付订单自动取消
             Long orderId = orderInfo.getId();
             this.sendDelayMessage(orderId);
+        }//余额支付
+        else if(SystemConstant.ORDER_PAY_ACCOUNT.equals(payWay))
+        {
+            //余额支付成功，订单信息保存完毕，修改订单状态为已支付
+            this.orderPaySuccess(orderNo);
         }
         return orderInfo;
     }
+    //根据订单编号修改订单状态
+    public void orderPaySuccess(String orderNo) {
+        OrderInfo orderInfo = this.getOrderInfoByOrderNo(orderNo);
+        //  判断当前订单状态为未支付，就将订单状态改为已支付。
+        if (orderInfo.getOrderStatus().equals(SystemConstant.ORDER_STATUS_UNPAID)) {
+            //  赋值：
+            orderInfo.setOrderStatus(SystemConstant.ORDER_STATUS_PAID);
+            //  修改订单状态.
+            this.orderInfoMapper.updateById(orderInfo);
+        }
+    }
 
+    /**
+     * 根据订单orderNo 获取订单对象,附带订单明细列表
+     * @param orderNo
+     * @return
+     */
+    public OrderInfo getOrderInfoByOrderNo(String orderNo) {
+        //根据订单编号查询order_info表对应订单基本信息
+        LambdaQueryWrapper<OrderInfo> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(OrderInfo::getOrderNo, orderNo);
+        OrderInfo orderInfo = orderInfoMapper.selectOne(queryWrapper);
+
+        //根据订单id查询订单明细数据，比如购买声音的记录
+        Long orderId = orderInfo.getId();
+        LambdaQueryWrapper<OrderDetail> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OrderDetail::getOrderId, orderId);
+        List<OrderDetail> orderDetails = orderDetailMapper.selectList(wrapper);
+
+        //设置订单明细到订单对象里面
+        orderInfo.setOrderDetailList(orderDetails);
+        //设置订单的支付方式名称
+        orderInfo.setPayWayName(this.getPayWayName(orderInfo.getPayWay()));
+
+        return orderInfo;
+    }
+
+    /**
+     * 根据payWay 返回支付方式名称
+     * @param payWay
+     * @return
+     */
+    private String getPayWayName(String payWay) {
+        //  声明一个对象
+        return SystemConstant.ORDER_PAY_WAY_WEIXIN.equals(payWay)?"微信支付":"余额支付";
+    }
+
+    /**
+     * 根据订单状态获取到订单状态名称
+     * @param orderStatus
+     * @return
+     */
+    private String getOrderStatusName(String orderStatus) {
+        //  声明订单状态名称
+        String orderStatusName = "";
+        //  判断
+        if (SystemConstant.ORDER_STATUS_UNPAID.equals(orderStatus)){
+            orderStatusName = "未支付";
+        } else if (SystemConstant.ORDER_STATUS_PAID.equals(orderStatus)) {
+            orderStatusName = "已支付";
+        } else {
+            orderStatusName = "已取消";
+        }
+        //  返回
+        return orderStatusName;
+    }
     //延迟队列实现30分钟未完成支付取消订单，消息发送到延迟队列，延迟30分钟后被消费端接收，如果此时订单状态还是未支付就会取消订单，更改订单状态
     private void sendDelayMessage(Long orderId) {
         //1.使用redissonClient创建阻塞队列
@@ -425,10 +544,12 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         //对orderInfoVo对象进行MD5加密
         //先将orderInfoVo对象转换成JSON字符串
         String jsonString = JSON.toJSONString(orderInfoVo);
+        log.info("加密前的订单信息：" + jsonString);
         //对JSON字符串转换成Map集合
         Map<String, Object> map = JSON.parseObject(jsonString, Map.class);
         //使用MD5加密
         String sign = SignHelper.getSign(map);
+        log.info("加密后的标签：" + sign);
         //将加密后的sign设置到orderInfoVo对象中，与明文数据一起传输，用户接收端处理订单时，将明文数据加密后与sign进行比较
         //相同则说明没有被篡改，不相同则说明明文数据被篡改
         orderInfoVo.setSign(sign);

@@ -25,4 +25,8 @@ public interface UserInfoService extends IService<UserInfo> {
     List<Long> findPaidUserTrackList(Long userId, Long albumId);
     //订单生成时添加用户购买记录
     void savePaidRecord(UserPaidRecordVo userPaidRecordVo);
+    //更新用户VIP到期状态
+    void updateVipExpireStatus();
+    //添加用户信息和初始化账户信息
+    void saveUserAndInitAccount(UserInfo userInfo);
 }

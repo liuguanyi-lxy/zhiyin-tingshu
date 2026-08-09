@@ -3,9 +3,12 @@ package com.atguigu.tingshu.order.api;
 import com.atguigu.tingshu.common.login.LoginVerification;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
+import com.atguigu.tingshu.model.order.OrderInfo;
 import com.atguigu.tingshu.order.service.OrderInfoService;
 import com.atguigu.tingshu.vo.order.OrderInfoVo;
 import com.atguigu.tingshu.vo.order.TradeVo;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +57,31 @@ public class OrderInfoApiController {
 		map.put("orderNo", orderNo);
 		//	返回数据
 		return Result.ok(map);
+	}
+	/**
+	 * 支付成功后根据返回的订单编号查看我的订单
+	 * @param orderNo
+	 * @return
+	 */
+	@LoginVerification
+	@Operation(summary = "支付成功后根据返回的订单编号查看我的订单")
+	@GetMapping("getOrderInfo/{orderNo}")
+	public Result<OrderInfo> getOrderInfo(@PathVariable String orderNo) {
+		OrderInfo orderInfo = orderInfoService.getOrderInfoByOrderNo(orderNo);
+		return Result.ok(orderInfo);
+	}
+
+	@LoginVerification
+	@Operation(summary = "进入用户主页获取用户订单")
+	@GetMapping("findUserPage/{page}/{limit}")
+	public Result index(@PathVariable Long page,
+						@PathVariable Long limit) {
+		// 获取到用户Id
+		Long userId = AuthContextHolder.getUserId();
+		Page<OrderInfo> pageParam = new Page<>(page, limit);
+		// 调用服务层方法
+		IPage<OrderInfo> pageModel = orderInfoService.findUserPage(pageParam, userId);
+		return Result.ok(pageModel);
 	}
 }
 

@@ -37,4 +37,9 @@ public class UserInfoDegradeFeignClient implements UserInfoFeignClient {
     public Result savePaidRecord(UserPaidRecordVo userPaidRecordVo) {
         return Result.fail();
     }
+
+    @Override
+    public Result updateVipExpireStatus() {
+        return Result.fail();
+    }
 }

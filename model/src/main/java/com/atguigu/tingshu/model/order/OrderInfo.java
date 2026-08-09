@@ -61,8 +61,11 @@ public class OrderInfo extends BaseEntity {
 	@TableField(exist = false)
 	private List<OrderDerate> orderDerateList;
 
+	@Schema(description = "订单状态名称")
 	@TableField(exist = false)
 	private String orderStatusName;
+
+	@Schema(description = "订单支付方式名称")
 	@TableField(exist = false)
 	private String payWayName;
 

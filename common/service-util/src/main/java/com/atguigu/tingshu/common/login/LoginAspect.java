@@ -34,6 +34,7 @@ public class LoginAspect {
     public Object loginVerification(ProceedingJoinPoint joinPoint, LoginVerification loginVerification) throws Throwable {
         //想要获取被增强的接口的请求参数可以通过RequestContextHolder获取request对象
         RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        log.info("拦截方法: {}, 注解: {}", joinPoint.getSignature().getName(), loginVerification);
         //获取request对象
         HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
         //1.获取请求头中的token，该token应该是前端传递过来的

@@ -9,7 +9,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-@Schema(description = "RechargeInfo")
+@Schema(description = "封装充值信息的实体类")
 @TableName("recharge_info")
 public class RechargeInfo extends BaseEntity {
 

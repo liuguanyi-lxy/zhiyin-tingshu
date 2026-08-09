@@ -1,5 +1,6 @@
 package com.atguigu.tingshu.account.service;
 
+import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.model.account.UserAccount;
 import com.atguigu.tingshu.vo.account.AccountLockVo;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -17,5 +18,5 @@ public interface UserAccountService extends IService<UserAccount> {
     //获取用户可用余额
     BigDecimal getAvailableAmount(Long userId);
     //检查和扣减余额
-    void checkAndDeduct(AccountLockVo accountDeductVo);
+    Result checkAndDeduct(AccountLockVo accountDeductVo);
 }

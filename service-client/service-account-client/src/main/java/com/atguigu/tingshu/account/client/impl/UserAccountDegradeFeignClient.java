@@ -13,4 +13,9 @@ public class UserAccountDegradeFeignClient implements UserAccountFeignClient {
     public Result checkAndDeduct(AccountLockVo accountDeductVo) {
         return null;
     }
+
+    @Override
+    public Result addUserAccount(Long userId) {
+        return null;
+    }
 }
