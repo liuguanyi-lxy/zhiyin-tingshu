@@ -58,4 +58,7 @@ public interface UserInfoFeignClient {
      */
     @PostMapping("api/user/userInfo/savePaidRecord")
     public Result savePaidRecord(@RequestBody UserPaidRecordVo userPaidRecordVo);
+    //更新数据库中VIP过期的用户状态
+    @GetMapping("api/user/userInfo/updateVipExpireStatus")
+    public Result updateVipExpireStatus();
 }

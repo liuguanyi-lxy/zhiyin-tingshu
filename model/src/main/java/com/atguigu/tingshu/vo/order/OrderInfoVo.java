@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Data
-@Schema(description = "订单对象,封装结算界面的订单详细数据")
+@Schema(description = "订单对象,封装结算界面的订单详细数据和支付界面选择的支付方式")
 public class OrderInfoVo {
 
     @NotEmpty(message = "交易流水号不能为空，用于存储到Redis中，处理订单时查询流水号，存在则为第一次交易，否则取消")

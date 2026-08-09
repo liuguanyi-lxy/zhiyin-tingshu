@@ -47,6 +47,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(GuiguException.class)
     @ResponseBody
     public Result error(GuiguException e){
+        log.error("触发异常拦截: " + e.getMessage(), e);  // 记录错误日志
         return Result.build(null,e.getCode(), e.getMessage());  // 使用自定义异常的错误码和信息
     }
 
@@ -58,7 +59,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({IllegalArgumentException.class})
     @ResponseBody
     public Result llegalArgumentException(Exception e) {
-        log.error("触发异常拦截: " + e.getMessage(), e);  // 记录错误日志
         return Result.build(null, ResultCodeEnum.ARGUMENT_VALID_ERROR);  // 返回参数验证错误码
     }
 

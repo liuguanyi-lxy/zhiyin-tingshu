@@ -33,6 +33,18 @@
             <artifactId>model</artifactId>
             <version>1.0</version>
         </dependency>
+        <!-- Seata 分布式事务框架的依赖配置 -->
+        <!-- Alibaba Cloud 提供的 Seata Spring Cloud Starter 依赖 -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-seata</artifactId>
+        </dependency>
+        <!-- Seata 官方提供的 Spring Boot Starter 依赖，指定版本为 1.7.1 -->
+        <dependency>
+            <groupId>io.seata</groupId>
+            <artifactId>seata-spring-boot-starter</artifactId>
+            <version>1.7.1</version>
+        </dependency>
     </dependencies>
 
     <build>

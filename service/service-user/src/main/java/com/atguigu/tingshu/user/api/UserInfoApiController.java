@@ -94,5 +94,11 @@ public class UserInfoApiController {
 		// 默认返回
 		return Result.ok();
 	}
+	@Operation(summary = "更新用户Vip到期时用户的状态")
+	@GetMapping("updateVipExpireStatus")
+	public Result updateVipExpireStatus() {
+		userInfoService.updateVipExpireStatus();
+		return Result.ok();
+	}
 }
 

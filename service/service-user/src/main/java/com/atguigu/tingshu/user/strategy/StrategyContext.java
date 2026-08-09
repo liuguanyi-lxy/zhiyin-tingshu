@@ -15,7 +15,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-public class StrategyFactory {
+public class StrategyContext {
 
 
     /**
