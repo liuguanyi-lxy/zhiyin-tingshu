@@ -29,7 +29,8 @@ public class AlbumInfoCdcHandler implements EntryHandler<CDCEntity> {
     @Override
     public void update(CDCEntity before, CDCEntity after) {
         log.info("监听到数据修改,ID:{}", after.getId());
-        String key = RedisConstant.ALBUM_INFO_PREFIX + after.getId();
+        // 与 RedisCacheAspect 的 key 拼接规则保持一致：prefix + Arrays.toString(args) = "album:info:[id]"
+        String key = RedisConstant.ALBUM_INFO_PREFIX + "[" + after.getId() + "]";
         redisTemplate.delete(key);
     }
 
@@ -45,8 +46,8 @@ public class AlbumInfoCdcHandler implements EntryHandler<CDCEntity> {
     public void delete(CDCEntity cdcEntity) {
     // 记录删除操作的日志，输出被删除实体的ID
         log.info("监听到数据删除,ID:{}", cdcEntity.getId());
-    // 构造Redis中对应的缓存键，格式为"album:info:实体ID"
-        String key = RedisConstant.ALBUM_INFO_PREFIX + cdcEntity.getId();
+    // 构造Redis中对应的缓存键，格式为"album:info:[实体ID]"，与 RedisCacheAspect 拼接规则一致
+        String key = RedisConstant.ALBUM_INFO_PREFIX + "[" + cdcEntity.getId() + "]";
     // 从Redis中删除对应的缓存数据
         redisTemplate.delete(key);
     }

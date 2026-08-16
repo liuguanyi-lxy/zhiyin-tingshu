@@ -41,6 +41,8 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <!-- Boot 2.3.6 默认管理 lombok 1.18.16，在 JDK 17 下编译报 IllegalAccessError，升级到支持 JDK 17 的版本 -->
+            <version>1.18.30</version>
         </dependency>
 <!-- Spring Boot Redis 依赖，提供与 Redis 缓存集成的功能 -->
         <dependency>
