@@ -1,6 +1,7 @@
 package com.atguigu.tingshu.receiver;
 
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
+import com.atguigu.tingshu.common.util.TraceContextUtil;
 import com.atguigu.tingshu.search.service.SearchService;
 import com.rabbitmq.client.Channel;
 import lombok.SneakyThrows;
@@ -33,16 +34,21 @@ public class SearchReceiver {
             key = {MqConst.ROUTING_ALBUM_UPPER}
     ))
     public void upper_album(Long albumId, Message message, Channel channel) {
-        //如果专辑ID不为空则进行向es中添加专辑信息
-        if(albumId != null) {
-            searchService.upperAlbum(albumId);
+        TraceContextUtil.begin(); //MQ消费无HTTP头，各自生成新traceId
+        try {
+            //如果专辑ID不为空则进行向es中添加专辑信息
+            if(albumId != null) {
+                searchService.upperAlbum(albumId);
+            }
+            //手动确认，默认是自动确认
+            // 确认消息已成功消费
+            // basicAck方法用于确认消息已被消费者成功处理
+            // 第一个参数deliveryTag表示消息的投递标签，用于唯一标识消息
+            // 第二个参数multiple设为false表示仅确认当前消息，不确认之前所有消息
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(),false);
+        } finally {
+            TraceContextUtil.end();
         }
-        //手动确认，默认是自动确认
-        // 确认消息已成功消费
-        // basicAck方法用于确认消息已被消费者成功处理
-        // 第一个参数deliveryTag表示消息的投递标签，用于唯一标识消息
-        // 第二个参数multiple设为false表示仅确认当前消息，不确认之前所有消息
-        channel.basicAck(message.getMessageProperties().getDeliveryTag(),false);
     }
     /**
      * 专辑下架
@@ -59,11 +65,16 @@ public class SearchReceiver {
             key = {MqConst.ROUTING_ALBUM_LOWER}
     ))
     public void lower_album(Long albumId, Message message, Channel channel) {
-        //业务处理
-        if (null != albumId) {
-            searchService.lowerAlbum(albumId);
+        TraceContextUtil.begin(); //MQ消费无HTTP头，各自生成新traceId
+        try {
+            //业务处理
+            if (null != albumId) {
+                searchService.lowerAlbum(albumId);
+            }
+            //手动应答
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        } finally {
+            TraceContextUtil.end();
         }
-        //手动应答
-        channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
     }
 }

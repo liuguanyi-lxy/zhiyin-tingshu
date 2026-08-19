@@ -1,6 +1,7 @@
 package com.atguigu.tingshu.order.receiver;
 
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
+import com.atguigu.tingshu.common.util.TraceContextUtil;
 import com.atguigu.tingshu.order.service.OrderInfoService;
 import com.rabbitmq.client.Channel;
 import lombok.SneakyThrows;
@@ -26,9 +27,14 @@ public class OrderReceiver {
             key = {MqConst.ROUTING_ORDER_PAY_SUCCESS}
     ))
     public void orderPaySuccess(String orderNo, Message message, Channel channel) {
-        if(StringUtils.hasText(orderNo)) {
-            orderInfoService.updateOrderSuccess(orderNo);
+        TraceContextUtil.begin(); //MQ消费无HTTP头，各自生成新traceId
+        try {
+            if(StringUtils.hasText(orderNo)) {
+                orderInfoService.updateOrderSuccess(orderNo);
+            }
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        } finally {
+            TraceContextUtil.end();
         }
-        channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
     }
 }
