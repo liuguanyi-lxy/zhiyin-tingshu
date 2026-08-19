@@ -3,6 +3,7 @@ package com.atguigu.tingshu.account.receiver;
 import com.atguigu.tingshu.account.service.RechargeInfoService;
 import com.atguigu.tingshu.account.service.UserAccountService;
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
+import com.atguigu.tingshu.common.util.TraceContextUtil;
 import com.rabbitmq.client.Channel;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -33,12 +34,17 @@ public class AccountReceiver {
             key = {MqConst.ROUTING_USER_REGISTER}
     ))
     public void receive(Long userId, Message message, Channel channel) {
-        if(userId != null) {
-            userAccountService.addUserAccount(userId);
+        TraceContextUtil.begin(); //MQ消费无HTTP头，各自生成新traceId
+        try {
+            if(userId != null) {
+                userAccountService.addUserAccount(userId);
+            }
+            //告诉 RabbitMQ 该消息已经成功处理，可以将其从队列中删除。false：表示不批量确认，仅确认当前这条消息
+            // Channel是RabbitMQ 原生的通道，主要用于手动确认消息
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(),false);
+        } finally {
+            TraceContextUtil.end();
         }
-        //告诉 RabbitMQ 该消息已经成功处理，可以将其从队列中删除。false：表示不批量确认，仅确认当前这条消息
-        // Channel是RabbitMQ 原生的通道，主要用于手动确认消息
-        channel.basicAck(message.getMessageProperties().getDeliveryTag(),false);
     }
 
     /**
@@ -54,14 +60,19 @@ public class AccountReceiver {
             key = {MqConst.ROUTING_RECHARGE_PAY_SUCCESS}
     ))
     public void rechargePaySuccess(String orderNo, Message message, Channel channel) {
-        log.info("充值成功通知: {}", orderNo);
-        //业务处理
-        if (StringUtils.hasText(orderNo)){
-            //通知更新用户账号
-            rechargeInfoService.rechargePaySuccess(orderNo);
-        }
+        TraceContextUtil.begin(); //MQ消费无HTTP头，各自生成新traceId
+        try {
+            log.info("充值成功通知: {}", orderNo);
+            //业务处理
+            if (StringUtils.hasText(orderNo)){
+                //通知更新用户账号
+                rechargeInfoService.rechargePaySuccess(orderNo);
+            }
 
-        //手动应答
-        channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+            //手动应答
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        } finally {
+            TraceContextUtil.end();
+        }
     }
 }

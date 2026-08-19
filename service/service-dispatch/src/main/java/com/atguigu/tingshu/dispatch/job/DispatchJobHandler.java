@@ -1,6 +1,7 @@
 package com.atguigu.tingshu.dispatch.job;
 
 import com.atguigu.tingshu.common.util.ExceptionUtil;
+import com.atguigu.tingshu.common.util.TraceContextUtil;
 import com.atguigu.tingshu.dispatch.mapper.XxlJobLogMapper;
 import com.atguigu.tingshu.model.dispatch.XxlJobLog;
 import com.atguigu.tingshu.search.client.SearchFeignClient;
@@ -30,23 +31,28 @@ public class DispatchJobHandler {
     //更新排行榜
     @XxlJob("updateLatelyAlbumRanking")
     public void updateLatelyAlbumRanking() {
-        // 封装日志对象
-        XxlJobLog xxlJobLog = new XxlJobLog();
-        xxlJobLog.setJobId(XxlJobHelper.getJobId());
-        long startTime = System.currentTimeMillis();
+        TraceContextUtil.begin(); //定时任务无HTTP头，各自生成新traceId
         try {
-            //远程调用，更新排行榜
-            searchFeignClient.updateLatelyAlbumRanking();
-        } catch (Exception e) {
-            xxlJobLog.setStatus(0);//失败
-            xxlJobLog.setError(ExceptionUtil.getErrorMessage(e));
-            log.error("定时任务执行失败，任务id为：{}", XxlJobHelper.getJobId());
-            e.printStackTrace();
+            // 封装日志对象
+            XxlJobLog xxlJobLog = new XxlJobLog();
+            xxlJobLog.setJobId(XxlJobHelper.getJobId());
+            long startTime = System.currentTimeMillis();
+            try {
+                //远程调用，更新排行榜
+                searchFeignClient.updateLatelyAlbumRanking();
+            } catch (Exception e) {
+                xxlJobLog.setStatus(0);//失败
+                xxlJobLog.setError(ExceptionUtil.getErrorMessage(e));
+                log.error("定时任务执行失败，任务id为：{}", XxlJobHelper.getJobId());
+                e.printStackTrace();
+            } finally {
+                //耗时
+                int times = (int) (System.currentTimeMillis() - startTime);
+                xxlJobLog.setTimes(times);
+                xxlJobLogMapper.insert(xxlJobLog);
+            }
         } finally {
-            //耗时
-            int times = (int) (System.currentTimeMillis() - startTime);
-            xxlJobLog.setTimes(times);
-            xxlJobLogMapper.insert(xxlJobLog);
+            TraceContextUtil.end();
         }
     }
 
@@ -55,26 +61,31 @@ public class DispatchJobHandler {
      */
     @XxlJob("updateVipExpireStatusJob")
     public void updateVipExpireStatusJob() {
-        log.info("更新Vip到期失效状态：{}", XxlJobHelper.getJobId());
-
-        //记录定时任务相关的日志信息
-        //封装日志对象
-        XxlJobLog xxlJobLog = new XxlJobLog();
-        xxlJobLog.setJobId(XxlJobHelper.getJobId());
-        long startTime = System.currentTimeMillis();
+        TraceContextUtil.begin(); //定时任务无HTTP头，各自生成新traceId
         try {
-            userInfoFeignClient.updateVipExpireStatus();
-            xxlJobLog.setStatus(1);//成功
-        } catch (Exception e) {
-            xxlJobLog.setStatus(0);//失败
-            xxlJobLog.setError(ExceptionUtil.getErrorMessage(e));
-            log.error("定时任务执行失败，任务id为：{}", XxlJobHelper.getJobId());
-            e.printStackTrace();
+            log.info("更新Vip到期失效状态：{}", XxlJobHelper.getJobId());
+
+            //记录定时任务相关的日志信息
+            //封装日志对象
+            XxlJobLog xxlJobLog = new XxlJobLog();
+            xxlJobLog.setJobId(XxlJobHelper.getJobId());
+            long startTime = System.currentTimeMillis();
+            try {
+                userInfoFeignClient.updateVipExpireStatus();
+                xxlJobLog.setStatus(1);//成功
+            } catch (Exception e) {
+                xxlJobLog.setStatus(0);//失败
+                xxlJobLog.setError(ExceptionUtil.getErrorMessage(e));
+                log.error("定时任务执行失败，任务id为：{}", XxlJobHelper.getJobId());
+                e.printStackTrace();
+            } finally {
+                //耗时
+                int times = (int) (System.currentTimeMillis() - startTime);
+                xxlJobLog.setTimes(times);
+                xxlJobLogMapper.insert(xxlJobLog);
+            }
         } finally {
-            //耗时
-            int times = (int) (System.currentTimeMillis() - startTime);
-            xxlJobLog.setTimes(times);
-            xxlJobLogMapper.insert(xxlJobLog);
+            TraceContextUtil.end();
         }
     }
 }
