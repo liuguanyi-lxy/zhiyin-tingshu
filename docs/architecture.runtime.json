@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "谷粒随享 · 运行时架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [1320, 560],
+    "views": [
+      { "id": "purchase-path", "label": "余额购买主链路", "focus": ["miniprogram", "gateway", "order", "account", "user"], "note": "小程序下单 → 网关鉴权 → 订单签名 → 原子扣款 → 权益发放。" },
+      { "id": "trust-boundaries", "label": "信任边界", "focus": ["miniprogram", "gateway", "album", "order", "account", "payment", "user", "mysql", "redis", "mq"], "note": "公网、网关、内部服务网、数据层四段式隔离。" },
+      { "id": "async-branch", "label": "异步与第三方", "focus": ["order", "mq", "payment", "wechat", "nacos"], "note": "延迟队列与支付事件驱动的最终一致。" }
+    ]
+  },
+  "components": [
+    { "id": "miniprogram", "type": "frontend", "label": "微信小程序", "sublabel": "uni-app 客户端", "pos": [40, 180], "size": [150, 62] },
+    { "id": "gateway", "type": "backend", "label": "server-gateway", "sublabel": "Spring Cloud Gateway :8500", "pos": [280, 180], "size": [170, 62], "tag": "统一鉴权 + traceId" },
+    { "id": "order", "type": "backend", "label": "service-order", "sublabel": ":8504", "pos": [560, 180], "size": [150, 62], "tag": "签名 + 防重 + 延迟队列" },
+    { "id": "account", "type": "backend", "label": "service-account", "sublabel": ":8505", "pos": [820, 180], "size": [150, 62], "tag": "余额原子扣款" },
+    { "id": "album", "type": "backend", "label": "service-album", "sublabel": ":8501", "pos": [560, 40], "size": [150, 62], "tag": "专辑/声音定价" },
+    { "id": "payment", "type": "backend", "label": "service-payment", "sublabel": ":8506", "pos": [820, 40], "size": [150, 62], "tag": "微信支付" },
+    { "id": "user", "type": "backend", "label": "service-user", "sublabel": ":8503", "pos": [820, 320], "size": [150, 62], "tag": "VIP/专辑/声音权益" },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "登录态 / 缓存 / 分布式锁", "pos": [40, 430], "size": [165, 62] },
+    { "id": "mq", "type": "messagebus", "label": "RabbitMQ", "sublabel": "延迟队列 + 异步事件", "pos": [400, 430], "size": [150, 62] },
+    { "id": "mysql", "type": "database", "label": "MySQL 8.0", "sublabel": "按服务分库", "pos": [700, 430], "size": [150, 62] },
+    { "id": "wechat", "type": "external", "label": "微信开放平台", "sublabel": "登录 + 支付 V3", "pos": [1120, 40], "size": [150, 62] },
+    { "id": "nacos", "type": "cloud", "label": "Nacos", "sublabel": "注册中心 + 配置中心", "pos": [1120, 180], "size": [150, 62] }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "公网 · 不可信", "wraps": ["miniprogram"] },
+    { "kind": "security-group", "label": "网关边界 · 唯一鉴权入口", "wraps": ["gateway"] },
+    { "kind": "region", "label": "内部服务网 · Feign 直连（不经过网关）", "wraps": ["album", "order", "account", "payment", "user"] },
+    { "kind": "region", "label": "数据与中间件层", "wraps": ["redis", "mq", "mysql"] },
+    { "kind": "region", "label": "第三方信任域", "wraps": ["wechat", "nacos"] }
+  ],
+  "connections": [
+    { "id": "client-to-gateway", "from": "miniprogram", "to": "gateway", "label": "HTTPS + token", "variant": "emphasis" },
+    { "id": "gateway-to-order", "from": "gateway", "to": "order", "label": "路由转发", "variant": "emphasis" },
+    { "id": "order-to-account", "from": "order", "to": "account", "label": "Feign 原子扣款", "variant": "emphasis" },
+    { "id": "order-to-user", "from": "order", "to": "user", "label": "Feign 发放权益", "variant": "emphasis", "fromSide": "bottom", "toSide": "top" },
+    { "id": "order-to-album", "from": "order", "to": "album", "label": "Feign 查定价", "fromSide": "top", "toSide": "bottom", "labelDx": -36 },
+    { "id": "order-to-payment", "from": "order", "to": "payment", "label": "发起微信支付", "fromSide": "top", "toSide": "bottom" },
+    { "id": "payment-to-wechat", "from": "payment", "to": "wechat", "label": "微信支付 V3" },
+    { "id": "order-to-mq", "from": "order", "to": "mq", "label": "延迟队列 · 超时取消", "variant": "dashed", "fromSide": "bottom", "toSide": "top" },
+    { "id": "order-to-mysql", "from": "order", "to": "mysql", "label": "订单落库", "fromSide": "bottom", "toSide": "top" },
+    { "id": "gateway-to-redis", "from": "gateway", "to": "redis", "label": "校验 token", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "主路径：余额购买", "items": ["小程序下单 → 网关校验 token 并透传 traceId", "order 取定价生成订单明细 + 签名，submitOrder 校验签名 + Lua 防重", "account 原子 SQL 扣款，user 按订单号幂等发放权益"] },
+    { "dot": "emerald", "title": "信任边界", "items": ["公网侧只有小程序，一律不可信", "网关是唯一鉴权入口：非白名单必须带有效 token", "内部服务网走 Feign 直连不过网关；数据层仅内网可达"] },
+    { "dot": "amber", "title": "图中未展开的部分", "items": ["service-search :8502（ES 检索/排行/联想）· service-dispatch :8509（XXL-JOB）", "service-cdc（Canal 监听 binlog 失效缓存）", "service-comment :8508（MongoDB）· service-live :8507"] },
+    { "dot": "rose", "title": "韧性与一致性", "items": ["扣款用条件更新原子 SQL 避免并发超扣；签名 + Lua 防重复提交", "延迟队列 30 分钟未支付自动取消订单", "支付成功事件经 MQ 异步驱动订单/账户/权益；日志按 traceId 串全链路"] }
+  ]
+}
