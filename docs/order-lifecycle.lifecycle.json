@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "订单状态机 · 0901 / 0902 / 0903",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1000,
+      566
+    ],
+    "views": [
+      {
+        "id": "balance-path",
+        "label": "余额支付：同步完成",
+        "focus": [
+          "created",
+          "unpaid",
+          "paid",
+          "granted"
+        ],
+        "note": "余额路径在生成订单后立即置为已支付并发放权益。"
+      },
+      {
+        "id": "wechat-timeout",
+        "label": "微信支付：超时取消",
+        "focus": [
+          "created",
+          "unpaid",
+          "cancelled"
+        ],
+        "note": "微信支付只落未支付订单，超时由延迟消息兜底取消。"
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "订单主状态"
+    },
+    {
+      "id": "terminal",
+      "label": "终态"
+    }
+  ],
+  "states": [
+    {
+      "id": "created",
+      "type": "start",
+      "label": "创建订单",
+      "sublabel": "trade 签名 + Lua 防重",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "start"
+    },
+    {
+      "id": "unpaid",
+      "type": "waiting",
+      "label": "未支付",
+      "sublabel": "订单三表已落库",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "0901"
+    },
+    {
+      "id": "paid",
+      "type": "success",
+      "label": "已支付",
+      "sublabel": "扣款完成",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "0902"
+    },
+    {
+      "id": "granted",
+      "type": "success",
+      "label": "权益已发放",
+      "sublabel": "VIP / 专辑 / 声音",
+      "lane": "main",
+      "col": 3,
+      "step": "04",
+      "tag": "done"
+    },
+    {
+      "id": "cancelled",
+      "type": "failure",
+      "label": "已取消",
+      "sublabel": "30 分钟超时未支付",
+      "lane": "terminal",
+      "col": 0,
+      "tag": "0903",
+      "yOffset": -80
+    }
+  ],
+  "transitions": [
+    {
+      "from": "created",
+      "to": "unpaid",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "unpaid",
+      "to": "paid",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "paid",
+      "to": "granted",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "unpaid",
+      "to": "cancelled",
+      "label": "延迟消息到期",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "两条支付路径",
+      "items": [
+        "余额支付：generateOrder 内直接调 orderPaySuccess，同步置为已支付",
+        "微信支付：只落 0901，等微信回调经 MQ 推进为 0902"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "超时兜底与护栏",
+      "items": [
+        "微信支付下单后发 30 分钟延迟消息，到期仍是 0901 则 cancelOrder 置 0903",
+        "每次流转都先判断当前值是否为 0901，天然幂等，支付成功后统一调 savePaidRecord 发权益"
+      ]
+    }
+  ]
+}
