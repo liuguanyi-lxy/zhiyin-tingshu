@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "网关统一鉴权 · AuthGlobalFilter",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [1000, 440],
+    "views": [
+      { "id": "allow", "label": "① 放行路径", "focus": ["request", "whitelist", "hasToken", "redisCheck", "forward"], "note": "白名单直通；其余请求必须携带有效 token。" },
+      { "id": "reject", "label": "② 拒绝路径", "focus": ["hasToken", "redisCheck", "reject208"], "note": "无 token 或 token 已过期，统一返回 208。" }
+    ]
+  },
+  "lanes": [
+    { "id": "main", "label": "放行路径" },
+    { "id": "reject", "label": "拒绝路径", "variant": "exception" }
+  ],
+  "nodes": [
+    { "id": "request", "lane": "main", "col": 0, "type": "external", "label": "请求进入", "sublabel": "Spring Cloud Gateway", "tag": "GlobalFilter" },
+    { "id": "whitelist", "lane": "main", "col": 1, "type": "security", "label": "白名单判定", "sublabel": "AntPathMatcher", "tag": "20 条精确路径" },
+    { "id": "hasToken", "lane": "main", "col": 2, "type": "security", "label": "是否携带 token", "sublabel": "读取 header.token", "tag": "空则拦截" },
+    { "id": "redisCheck", "lane": "main", "col": 3, "type": "database", "label": "Redis 校验", "sublabel": "hasKey(裸 token)", "tag": "TTL 30 分钟" },
+    { "id": "forward", "lane": "main", "col": 4, "type": "backend", "label": "放行转发下游", "sublabel": "lb://service-xxx", "tag": "透传 traceId" },
+    { "id": "reject208", "lane": "reject", "col": 3, "type": "security", "label": "返回 208", "sublabel": "HTTP 200 + code 208", "tag": "前端跳登录" }
+  ],
+  "edges": [
+    { "from": "request", "to": "whitelist", "label": "进入过滤器", "role": "main" },
+    { "from": "whitelist", "to": "forward", "label": "命中白名单", "role": "branch" },
+    { "from": "whitelist", "to": "hasToken", "label": "未命中", "role": "main" },
+    { "from": "hasToken", "to": "redisCheck", "label": "token 非空", "role": "main" },
+    { "from": "hasToken", "to": "reject208", "label": "token 为空", "role": "error" },
+    { "from": "redisCheck", "to": "forward", "label": "key 存在", "role": "main" },
+    { "from": "redisCheck", "to": "reject208", "label": "已过期", "role": "error" }
+  ],
+  "mainPath": ["request", "whitelist", "hasToken", "redisCheck", "forward"],
+  "semanticChecks": {
+    "allowedRoots": ["request"],
+    "allowedTerminals": ["forward", "reject208"]
+  },
+  "cards": [
+    { "dot": "cyan", "title": "为什么网关要做鉴权", "items": ["服务层 @LoginVerification 只保护加了注解的方法，项目里 checkAndDeduct 等内部接口没有注解", "网关默认全拦 + 白名单，把这些接口挡在外部，形成双层防护"] },
+    { "dot": "amber", "title": "几个关键取舍", "items": ["校验的是裸 token（对齐 WxLoginApiController 写入的 key），不能用 user:login: 前缀", "必须返回 HTTP 200 + body.code=208，前端 request.js 才识别为登录过期", "Feign 服务间调用走 lb:// 直连不经网关，不受拦截影响"] }
+  ]
+}
