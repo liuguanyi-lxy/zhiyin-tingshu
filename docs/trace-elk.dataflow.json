@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "traceId 与 ELK 日志链路",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1068,
+      430
+    ],
+    "views": [
+      {
+        "id": "trace-propagation",
+        "label": "① traceId 如何贯穿",
+        "focus": [
+          "gateway",
+          "services",
+          "mqjob"
+        ],
+        "note": "网关生成，服务与 Feign 逐跳透传；MQ 与定时任务各自开新链路。"
+      },
+      {
+        "id": "log-pipeline",
+        "label": "② 日志如何入库",
+        "focus": [
+          "logstash",
+          "es",
+          "kibana"
+        ],
+        "note": "logback 发 JSON 到 Logstash，落地 ES 后由 Kibana 检索。"
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "① 网关"
+    },
+    {
+      "label": "② 服务"
+    },
+    {
+      "label": "③ 采集"
+    },
+    {
+      "label": "④ 存储"
+    },
+    {
+      "label": "⑤ 检索"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "gateway",
+      "type": "backend",
+      "label": "server-gateway",
+      "sublabel": "TraceGlobalFilter",
+      "tag": "生成 X-Request-Id",
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "services",
+      "type": "backend",
+      "label": "9 个微服务",
+      "sublabel": "TraceFilter → MDC",
+      "tag": "Feign 透传",
+      "stage": 1,
+      "row": 0
+    },
+    {
+      "id": "mqjob",
+      "type": "messagebus",
+      "label": "MQ / XXL-JOB",
+      "sublabel": "无 HTTP 头",
+      "tag": "各自 begin()",
+      "stage": 1,
+      "row": 1
+    },
+    {
+      "id": "logstash",
+      "type": "cloud",
+      "label": "Logstash",
+      "sublabel": "tcp :5044",
+      "stage": 2,
+      "row": 0
+    },
+    {
+      "id": "es",
+      "type": "database",
+      "label": "Elasticsearch",
+      "sublabel": "ts-YYYY.MM.dd",
+      "stage": 3,
+      "row": 0
+    },
+    {
+      "id": "kibana",
+      "type": "cloud",
+      "label": "Kibana",
+      "sublabel": "Discover + KQL",
+      "tag": "按 traceId 检索",
+      "stage": 4,
+      "row": 0
+    }
+  ],
+  "flows": [
+    {
+      "from": "gateway",
+      "to": "services",
+      "label": "透传 traceId",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "services",
+      "to": "logstash",
+      "label": "logback JSON",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "from": "mqjob",
+      "to": "logstash",
+      "label": "同一管道",
+      "variant": "dashed"
+    },
+    {
+      "from": "logstash",
+      "to": "es",
+      "label": "写索引",
+      "route": "straight"
+    },
+    {
+      "from": "es",
+      "to": "kibana",
+      "label": "检索",
+      "route": "straight"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "traceId 怎么贯穿全链路",
+      "items": [
+        "网关先执行 TraceGlobalFilter：取前端 X-Request-Id 或新生成，写入 MDC 并透传下游",
+        "各服务 TraceFilter 从请求头读入 MDC；FeignInterceptor 再带到下一跳，一次请求全程同一个值"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "日志怎么进 ES",
+      "items": [
+        "9 个服务 logback 用 LogstashEncoder 输出 JSON 到 192.168.13.100:5044",
+        "Logstash 写入 ES 索引 ts-{+YYYY.MM.dd}；Kibana 建 ts-* 索引模式后按 traceId 检索整条链路"
+      ]
+    }
+  ]
+}
