@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "余额购买 · 调用时序",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [1080, 490],
+    "views": [
+      { "id": "gateway-auth", "label": "① 网关鉴权", "focus": ["miniapp", "gateway", "order"], "note": "请求先在网关完成登录校验，再进入业务服务。" },
+      { "id": "deduct", "label": "② 防重与原子扣款", "focus": ["order", "redis", "account", "mysql"], "note": "Lua 比对流水号防重复提交；扣款由数据库条件更新保证不超扣。" },
+      { "id": "grant", "label": "③ 发放权益与返回", "focus": ["order", "user", "mysql", "miniapp"], "note": "按订单号幂等发放权益，最后把 orderNo 返回前端。" }
+    ]
+  },
+  "participants": [
+    { "id": "miniapp", "type": "frontend", "label": "微信小程序", "sublabel": "uni-app 客户端" },
+    { "id": "gateway", "type": "backend", "label": "server-gateway", "sublabel": ":8500 鉴权 + 路由" },
+    { "id": "order", "type": "backend", "label": "service-order", "sublabel": ":8504 签名 + 防重" },
+    { "id": "account", "type": "backend", "label": "service-account", "sublabel": ":8505 余额扣减" },
+    { "id": "user", "type": "backend", "label": "service-user", "sublabel": ":8503 权益发放" },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "登录态 + 防重键" },
+    { "id": "mysql", "type": "database", "label": "MySQL 8.0", "sublabel": "订单/账户/用户库" }
+  ],
+  "segments": [
+    { "from": 148, "to": 222, "label": "① 网关鉴权" },
+    { "from": 228, "to": 320, "label": "② 防重 + 原子扣款" },
+    { "from": 326, "to": 420, "label": "③ 落库 + 发放权益 + 返回" }
+  ],
+  "messages": [
+    { "from": "miniapp", "to": "gateway", "y": 175, "label": "POST /submitOrder", "variant": "emphasis" },
+    { "from": "gateway", "to": "order", "y": 208, "label": "鉴权通过，转发 + traceId", "variant": "emphasis" },
+    { "from": "order", "to": "redis", "y": 241, "label": "Lua 比对并删除防重键", "variant": "security" },
+    { "from": "order", "to": "account", "y": 274, "label": "Feign checkAndDeduct", "variant": "emphasis" },
+    { "from": "account", "to": "mysql", "y": 307, "label": "原子 SQL 条件更新扣款", "variant": "emphasis" },
+    { "from": "order", "to": "user", "y": 340, "label": "Feign savePaidRecord", "variant": "emphasis" },
+    { "from": "user", "to": "mysql", "y": 373, "label": "按 orderNo 幂等发权益", "variant": "emphasis" },
+    { "from": "order", "to": "miniapp", "y": 406, "label": "返回 orderNo", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "gateway", "from": 170, "to": 214, "type": "backend" },
+    { "participant": "order", "from": 203, "to": 414, "type": "backend" },
+    { "participant": "redis", "from": 236, "to": 252, "type": "database" },
+    { "participant": "account", "from": 269, "to": 313, "type": "backend" },
+    { "participant": "mysql", "from": 302, "to": 382, "type": "database" },
+    { "participant": "user", "from": 335, "to": 379, "type": "backend" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "防篡改 + 防重复提交", "items": ["trade 生成订单明细并用 SignHelper 计算 sign，submitOrder 先验签，被篡改直接抛异常", "Redis Lua 脚本一次完成「比对 tradeNo + 删除键」，保证原子性，重复提交被拒"] },
+    { "dot": "emerald", "title": "资金安全：原子扣款", "items": ["扣款用条件更新 UPDATE ... WHERE available_amount >= #{amount}，影响行数为 0 即余额不足", "并发请求由数据库行锁串行化，不会出现先查后改导致的超扣"] },
+    { "dot": "amber", "title": "幂等与一致性", "items": ["user 侧按 orderNo 判断是否已发放，重复调用不会重复给权益", "submitOrder 标注 @GlobalTransactional，跨服务写操作纳入 Seata 事务"] }
+  ]
+}
