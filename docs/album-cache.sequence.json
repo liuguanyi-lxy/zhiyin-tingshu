@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "专辑详情 · 缓存读取时序",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [1080, 490],
+    "views": [
+      { "id": "penetration", "label": "① 防穿透", "focus": ["miniapp", "gateway", "album", "redis"], "note": "布隆过滤器先挡掉一定不存在的专辑 ID。" },
+      { "id": "breakdown", "label": "② 防击穿与回写", "focus": ["album", "redis", "mysql"], "note": "未命中加分布式锁，只放一个线程回源，其余自旋等待。" }
+    ]
+  },
+  "participants": [
+    { "id": "miniapp", "type": "frontend", "label": "微信小程序", "sublabel": "uni-app 客户端" },
+    { "id": "gateway", "type": "backend", "label": "server-gateway", "sublabel": ":8500 白名单直通" },
+    { "id": "album", "type": "backend", "label": "service-album", "sublabel": ":8501 专辑服务" },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "缓存 + 布隆 + 锁" },
+    { "id": "mysql", "type": "database", "label": "MySQL 8.0", "sublabel": "album_info + 标签表" }
+  ],
+  "segments": [
+    { "from": 148, "to": 228, "label": "① 入口校验" },
+    { "from": 234, "to": 322, "label": "② 缓存未命中" },
+    { "from": 328, "to": 418, "label": "③ 回源与回写" }
+  ],
+  "messages": [
+    { "from": "miniapp", "to": "gateway", "y": 175, "label": "GET getAlbumInfo/{albumId}", "variant": "emphasis" },
+    { "from": "gateway", "to": "album", "y": 208, "label": "白名单直通，转发", "variant": "emphasis" },
+    { "from": "album", "to": "redis", "y": 241, "label": "布隆过滤器 contains？", "variant": "security" },
+    { "from": "album", "to": "redis", "y": 274, "label": "GET album:info:[albumId]", "variant": "emphasis" },
+    { "from": "album", "to": "redis", "y": 307, "label": "未命中 → tryLock 加锁", "variant": "security" },
+    { "from": "album", "to": "mysql", "y": 340, "label": "查专辑表 + 标签表", "variant": "emphasis" },
+    { "from": "album", "to": "redis", "y": 373, "label": "回写缓存 TTL 5 分钟", "variant": "emphasis" },
+    { "from": "album", "to": "miniapp", "y": 406, "label": "返回专辑详情", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "gateway", "from": 170, "to": 200, "type": "backend" },
+    { "participant": "album", "from": 203, "to": 414, "type": "backend" },
+    { "participant": "redis", "from": 236, "to": 380, "type": "database" },
+    { "participant": "mysql", "from": 334, "to": 348, "type": "database" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "防穿透：布隆过滤器 + 空值缓存", "items": ["启动时把库里全部专辑 ID 灌进 Redisson 布隆过滤器 album:bloom:filter", "contains 返回 false 说明一定不存在，直接抛异常，请求不落到数据库"] },
+    { "dot": "amber", "title": "防击穿：分布式锁 + 自旋", "items": ["未命中时用 Redisson tryLock 加锁，只有一个线程回源查库，其余 sleep 100ms 后自旋重试", "回写 TTL 5 分钟；查库结果为空也会写一个短 TTL 空对象，避免同一无效 ID 反复打库"] }
+  ]
+}
