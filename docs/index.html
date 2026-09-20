@@ -57,10 +57,28 @@
       <div class="desc">网关鉴权 → Lua 防重 → 原子扣款 → 订单落库 → 幂等发权益，含同步与异步分支。</div>
     </a>
 
+    <a class="card" href="wechat-pay.sequence.html">
+      <span class="tag">SEQUENCE</span>
+      <div class="name">微信支付全链路</div>
+      <div class="desc">createJsapi → 微信支付 V3 → 查单 → 发 MQ → order / account 异步推进。含"当前用轮询而非回调"的实情说明。</div>
+    </a>
+
+    <a class="card" href="album-cache.sequence.html">
+      <span class="tag">SEQUENCE</span>
+      <div class="name">专辑详情缓存读取</div>
+      <div class="desc">布隆过滤器防穿透 + Redisson 分布式锁防击穿 + 回写缓存，缓存三件套完整链路。</div>
+    </a>
+
     <a class="card" href="order-lifecycle.lifecycle.html">
       <span class="tag">LIFECYCLE</span>
       <div class="name">订单状态机</div>
       <div class="desc">0901 未支付 / 0902 已支付 / 0903 已取消，含延迟队列 30 分钟超时取消的兜底路径。</div>
+    </a>
+
+    <a class="card" href="vip-lifecycle.lifecycle.html">
+      <span class="tag">LIFECYCLE</span>
+      <div class="name">VIP 会员生命周期</div>
+      <div class="desc">非会员 → 有效 → 续期 → 失效；含"续期从原过期时间累加"这个易错细节。</div>
     </a>
 
     <a class="card" href="trace-elk.dataflow.html">

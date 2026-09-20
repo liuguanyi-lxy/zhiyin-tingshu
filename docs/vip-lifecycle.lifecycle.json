@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "VIP 会员 · 生命周期",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [1000, 566],
+    "views": [
+      { "id": "first-purchase", "label": "首次开通", "focus": ["nonVip", "active"], "note": "从当前时间起算会员时长。" },
+      { "id": "renewal", "label": "续期与失效", "focus": ["active", "renewed", "expired"], "note": "续期从原过期时间累加；到期未续费由定时任务置为失效。" }
+    ]
+  },
+  "lanes": [
+    { "id": "main", "label": "会员状态" },
+    { "id": "terminal", "label": "失效" }
+  ],
+  "states": [
+    { "id": "nonVip", "type": "start", "label": "非会员", "sublabel": "isVip = 0", "lane": "main", "col": 0, "step": "01", "tag": "起点" },
+    { "id": "active", "type": "success", "label": "会员有效", "sublabel": "isVip = 1 且未到期", "lane": "main", "col": 1, "step": "02", "tag": "vipExpireTime" },
+    { "id": "renewed", "type": "success", "label": "续期生效", "sublabel": "BaseTime = 原过期时间", "lane": "main", "col": 2, "step": "03", "tag": "剩余时长不浪费" },
+    { "id": "expired", "type": "failure", "label": "已失效", "sublabel": "定时任务批量置 isVip = 0", "lane": "terminal", "col": 0, "tag": "XXL-JOB", "yOffset": -80 }
+  ],
+  "transitions": [
+    { "from": "nonVip", "to": "active", "variant": "emphasis", "route": "straight" },
+    { "from": "active", "to": "renewed", "variant": "emphasis", "route": "straight" },
+    { "from": "renewed", "to": "active", "variant": "dashed", "route": "top-channel" },
+    { "from": "active", "to": "expired", "label": "到期未续费", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "续期从原过期时间累加", "items": ["判据是 isVip == 1 且 vipExpireTime 在当前时间之后，满足才把 BaseTime 设为原过期时间", "不满足则以当前时间为基准，首充与已过期后的重新购买都走这条分支"] },
+    { "dot": "amber", "title": "到期由定时任务兜底", "items": ["XXL-JOB 的 updateVipExpireStatusJob 周期性触发，service-dispatch 通过 Feign 调用 user 服务批量置 isVip = 0", "任务执行结果写 xxl_job_log，便于排查失败原因"] }
+  ]
+}
