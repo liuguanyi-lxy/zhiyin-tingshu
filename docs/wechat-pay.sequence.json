@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "微信支付 · 全链路时序",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [1080, 570],
+    "views": [
+      { "id": "order-and-pay", "label": "① 下单与支付", "focus": ["miniapp", "gateway", "payment", "wechat"], "note": "前端下单拿到支付参数，再拉起微信支付。" },
+      { "id": "async-fanout", "label": "② MQ 异步推进", "focus": ["payment", "mq", "order", "account"], "note": "支付成功只发一条消息，订单与账户各自幂等消费。" }
+    ]
+  },
+  "participants": [
+    { "id": "miniapp", "type": "frontend", "label": "微信小程序", "sublabel": "uni-app 客户端" },
+    { "id": "gateway", "type": "backend", "label": "server-gateway", "sublabel": ":8500 鉴权 + 路由" },
+    { "id": "payment", "type": "backend", "label": "service-payment", "sublabel": ":8506 微信支付" },
+    { "id": "wechat", "type": "external", "label": "微信支付 V3", "sublabel": "jsapi 下单 / 查单" },
+    { "id": "mq", "type": "messagebus", "label": "RabbitMQ", "sublabel": "支付成功事件" },
+    { "id": "order", "type": "backend", "label": "service-order", "sublabel": ":8504 订单状态" },
+    { "id": "account", "type": "backend", "label": "service-account", "sublabel": ":8505 充值入账" }
+  ],
+  "segments": [
+    { "from": 148, "to": 262, "label": "① 下单与鉴权" },
+    { "from": 268, "to": 382, "label": "② 支付与查单" },
+    { "from": 388, "to": 500, "label": "③ MQ 异步推进" }
+  ],
+  "messages": [
+    { "from": "miniapp", "to": "gateway", "y": 175, "label": "POST /createJsapi", "variant": "emphasis" },
+    { "from": "gateway", "to": "payment", "y": 213, "label": "鉴权通过，转发", "variant": "emphasis" },
+    { "from": "payment", "to": "wechat", "y": 251, "label": "V3 下单，返回支付参数", "variant": "emphasis" },
+    { "from": "miniapp", "to": "wechat", "y": 289, "label": "拉起微信支付" },
+    { "from": "miniapp", "to": "gateway", "y": 327, "label": "轮询 queryPayStatus" },
+    { "from": "payment", "to": "wechat", "y": 365, "label": "主动查单 → Transaction" },
+    { "from": "payment", "to": "mq", "y": 403, "label": "发送支付成功事件", "variant": "emphasis" },
+    { "from": "mq", "to": "order", "y": 441, "label": "异步置 0902 + 发权益", "variant": "dashed" },
+    { "from": "mq", "to": "account", "y": 479, "label": "异步充值入账", "variant": "dashed" }
+  ],
+  "activations": [
+    { "participant": "gateway", "from": 170, "to": 336, "type": "backend" },
+    { "participant": "payment", "from": 206, "to": 410, "type": "backend" },
+    { "participant": "wechat", "from": 244, "to": 372, "type": "external" },
+    { "participant": "mq", "from": 398, "to": 492, "type": "messagebus" },
+    { "participant": "order", "from": 428, "to": 458, "type": "backend" },
+    { "participant": "account", "from": 466, "to": 496, "type": "backend" }
+  ],
+  "cards": [
+    { "dot": "amber", "title": "当前用轮询，不是回调", "items": ["notifyUrl 已在 Nacos 配好，但 payment 模块没有实现 /notify REST 端点", "实际由前端轮询 queryPayStatus，后端主动向微信查单拿到 Transaction"] },
+    { "dot": "cyan", "title": "幂等与最终一致", "items": ["updatePaymentStatus 先判支付状态，已支付直接 return，重复查单不会重复发消息", "支付成功只发一条 MQ，order 与 account 各自消费：订单置 0902 并发权益，充值则更新账户余额"] }
+  ]
+}
