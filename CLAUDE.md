@@ -122,4 +122,5 @@ tingshu-parent
 
 ### 网关
 - 路由规则在 Nacos `server-gateway-dev.yaml`：按 `Path=/*/album/**` 等前缀把请求转发到对应 `lb://` 服务；`lb:ws://` 处理直播 WebSocket。
-- `AuthGlobalFilter` 目前是空实现（仅透传），鉴权实际由各服务 `@LoginVerification` 完成。
+- `AuthGlobalFilter` **已实现统一登录鉴权**（默认全拦 + 白名单）：20 条 Ant 风格白名单路径直接放行，其余路径校验请求头 `token` 在 Redis 中是否存在（登录 token 的 key 是**裸 token 字符串**，无前缀），不存在则返回 HTTP 200 + body `{"code":208}`（前端 `request.js` 依赖 `statusCode==200 && code==208` 触发重新登录）。与各服务 `@LoginVerification` 构成双层防护。
+- 白名单中专辑详情路径用 `/api/search/albumInfo/{albumId:[0-9]+}` 正则限定为数字 ID，避免误放行 `batchUpperAlbum`、`updateLatelyAlbumRanking` 等单词路径。

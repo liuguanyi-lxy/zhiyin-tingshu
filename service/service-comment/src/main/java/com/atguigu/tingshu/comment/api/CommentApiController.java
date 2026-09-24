@@ -17,4 +17,3 @@ public class CommentApiController {
 	private CommentService commentService;
 
 }
-
