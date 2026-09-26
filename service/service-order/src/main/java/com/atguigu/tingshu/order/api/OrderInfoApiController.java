@@ -19,6 +19,12 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * C 端订单 API。
+ *
+ * <p>Controller 只负责身份、参数和响应协议；价格计算、签名校验、账户协作和订单落库都在
+ * {@code OrderInfoService} 中完成。</p>
+ */
 @Tag(name = "订单管理")
 @RestController
 @RequestMapping("api/order/orderInfo")
@@ -36,6 +42,7 @@ public class OrderInfoApiController {
 	@Operation(summary = "根据购买界面给的选购信息，构建结算界面的订单明细，最后返回订单信息给支付界面")
 	@PostMapping("trade")
 	public Result<OrderInfoVo> trade(@RequestBody @Validated TradeVo tradeVo) {
+		// trade 阶段只生成结算快照，不代表订单已经创建或已经扣款。
 		Long userId = AuthContextHolder.getUserId();
 		OrderInfoVo orderInfoVo = orderInfoService.trade(tradeVo,userId);
 		return Result.ok(orderInfoVo);
@@ -49,13 +56,13 @@ public class OrderInfoApiController {
 	@Operation(summary = "立即结算后进入支付界面选择支付方式后生成订单")
 	@PostMapping("submitOrder")
 	public Result<Map<String, Object>> submitOrder(@RequestBody @Validated OrderInfoVo orderInfoVo) {
-		//  获取到用户Id
+		// 用户 ID 来自 LoginAspect 写入的 ThreadLocal，不信任前端传入的 userId。
 		Long userId = AuthContextHolder.getUserId();
-		//  调用服务层方法
+		// 服务层会校验 tradeNo、签名、重复提交，并创建正式订单。
 		String orderNo = orderInfoService.submitOrder(orderInfoVo, userId);
 		Map<String, Object> map = new HashMap();
 		map.put("orderNo", orderNo);
-		//	返回数据
+		// 只返回订单号，后续支付服务根据订单号创建或查询支付单。
 		return Result.ok(map);
 	}
 	/**
@@ -84,4 +91,3 @@ public class OrderInfoApiController {
 		return Result.ok(pageModel);
 	}
 }
-

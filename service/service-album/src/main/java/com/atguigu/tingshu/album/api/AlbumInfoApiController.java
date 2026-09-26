@@ -28,6 +28,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 专辑相关 API。
+ *
+ * <p>这个 Controller 同时服务于三类调用方：创作者管理端、C 端页面，以及其他微服务的 Feign 调用。
+ * 因此，带 {@code @LoginVerification} 的方法通常是管理端或用户私有数据；没有该注解的方法通常是公开查询或内部查询接口。</p>
+ */
 @Tag(name = "专辑管理")
 @RestController
 @RequestMapping("api/album/albumInfo")
@@ -39,7 +45,7 @@ public class AlbumInfoApiController {
 	private AlbumInfoService albumInfoService;
     @Autowired
     private RedissonClient redissonClient;
-	//保存专辑
+	/** 保存创作者提交的专辑基本信息和标签信息。 */
 	@LoginVerification
 	@Operation(summary = "保存专辑")
 	@PostMapping("saveAlbumInfo")
@@ -47,7 +53,7 @@ public class AlbumInfoApiController {
 		albumInfoService.saveAlbumInfo(albumInfoVo);
 		return Result.ok();
 	}
-	//查询专辑列表
+	/** 分页查询当前登录创作者自己的专辑列表。 */
 	@LoginVerification
 	@Operation(summary = "分页查询专辑列表")
     @PostMapping("findUserAlbumPage/{page}/{limit}")
@@ -61,7 +67,7 @@ public class AlbumInfoApiController {
 		IPage<AlbumListVo>  AlbumList=albumInfoService.selectAlbumListPage(pageParam, albumInfoQuery);
 		return Result.ok(AlbumList);
 	}
-	//根据专辑ID删除专辑
+	/** 删除当前用户拥有的专辑。权限和关联数据处理在 Service 层完成。 */
 	@LoginVerification
 	@Operation(summary = "根据专辑ID删除专辑")
 	@DeleteMapping("removeAlbumInfo/{albumId}")
@@ -69,14 +75,16 @@ public class AlbumInfoApiController {
 		albumInfoService.removeAlbumInfo(albumId);
 		return Result.ok();
 	}
-	//会被做远程调用接口
-	//修改之前先回显专辑信息-根据专辑id获取专辑数据
+	/**
+	 * 查询专辑详情。
+	 *
+	 * <p>先用布隆过滤器拦截明显不存在的 ID，再进入缓存切面和数据库查询，避免恶意随机 ID 直接穿透到数据库。</p>
+	 */
 	@Operation(summary = "根据专辑ID获取专辑信息")
 	@GetMapping("getAlbumInfo/{albumId}")
 	public Result<AlbumInfo> getAlbumInfo(@PathVariable Long albumId) {
 		logger.info("开始查询专辑，ID: {}", albumId);
-		//添加布隆过滤器对查询的专辑进行初步判断，如果查询的专辑ID不在布隆过滤器中则一定不在缓存和数据库中，为了避免缓存穿透直接抛出异常
-		// 注意：布隆过滤器已在应用启动时初始化，并添加了所有专辑ID
+		// 布隆过滤器在应用启动时加载已有专辑 ID；不命中时可以确定数据库中不存在该 ID。
 		RBloomFilter<Object> bloomFilter = redissonClient.getBloomFilter(RedisConstant.ALBUM_BLOOM_FILTER);
 		logger.info("获取布隆过滤器，检查专辑ID {} 是否存在", albumId);
 		//布隆过滤器不包含该专辑ID
@@ -89,7 +97,7 @@ public class AlbumInfoApiController {
 		logger.info("从数据库查询到专辑: {}", albumInfo);
 		return Result.ok(albumInfo);
 	}
-	//修改专辑信息
+	/** 修改专辑基本信息、标签，并根据公开状态变化通知搜索服务上下架。 */
 	@LoginVerification
 	@Operation(summary = "根据专辑ID修改专辑信息,回显给前端的专辑信息被修改后传回给后端进行保存")
 	@PutMapping("updateAlbumInfo/{albumId}")
@@ -97,7 +105,7 @@ public class AlbumInfoApiController {
 		albumInfoService.updateAlbumInfo(albumId,albumInfoVo);
 		return Result.ok();
 	}
-	//获取用户的专辑列表
+	/** 查询当前创作者拥有的专辑简表，供管理端选择专辑使用。 */
 	@LoginVerification
 	@Operation(summary = "获取用户的专辑列表")
     @GetMapping("findUserAllAlbumList")

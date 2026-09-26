@@ -19,6 +19,12 @@ import org.springframework.util.StringUtils;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 声音播放统计消息消费者。
+ *
+ * <p>播放量更新不阻塞用户播放请求，而是通过 MQ 异步落库。消费者用业务编号在 Redis 中做幂等控制，
+ * 这样即使生产者重试或 RabbitMQ 重投，也不会重复累加统计值。</p>
+ */
 @Component
 public class TrackReceiver {
 
@@ -27,14 +33,13 @@ public class TrackReceiver {
 
     @Autowired
     private RedisTemplate redisTemplate;
-    //监听接收端，接收更新专辑和声音播放量的消息
+    /** 接收播放统计消息并更新专辑、声音的统计数据。 */
     @SneakyThrows
     @RabbitListener(bindings = @QueueBinding(
             exchange = @Exchange(value = MqConst.EXCHANGE_TRACK, durable = "true"),
             value = @Queue(value = MqConst.QUEUE_TRACK_STAT_UPDATE, durable = "true"),
             key = {MqConst.ROUTING_TRACK_STAT_UPDATE}
     ))
-    //处理发送的消息，
     /**
      * 更新统计信息的方法
      * @param content 消息内容，用于统计信息更新
@@ -45,29 +50,22 @@ public class TrackReceiver {
         TraceContextUtil.begin(); //MQ消费无HTTP头，各自生成新traceId
         try {
             if(!StringUtils.isEmpty(content)) {
-                //把字符串转换成指定类型的对象
+                // 生产者发送的是 JSON 文本，先还原成约定的消息对象。
                 TrackStatMqVo trackStatMqVo = JSON.parseObject(content, TrackStatMqVo.class);
                 if(trackStatMqVo != null) {
-                    //1 获取发送端传递业务编号
+                    // businessNo 是消息幂等键，而不是数据库主键。
                     String businessNo = trackStatMqVo.getBusinessNo();
-                    //2 redis添加数据，使用setnx方法，带有锁机制
-                    //为了保证RabbitMq消息幂等性，也就是因为网络问题可能导致消息被发送多次，但是只要求消费一次，使用Redis的setnx方法
-                    //向Redis中存储，key为业务编号businessNo，value为1，设置过期时间为1小时的数据，这样第一次消费消息就添加的该条数据
-                    //因为sexnx的锁机制，在没有主动使用del方法释放或者过期时间未到之前都无法对相同key的数据的value进行修改，这样后续的相同
-                    //消息因为业务编号一样所以无法向Redis中设置相同key的数据，因此无法被消费
+                    // setIfAbsent 等价于 Redis SETNX：只有第一次消费能写入标记。
                     Boolean setIfAbsent = redisTemplate.opsForValue().setIfAbsent(businessNo, 1, 1, TimeUnit.HOURS);
                     //3 如果添加成功，证明第一次消费，就对播放量进行更新
                     if(setIfAbsent) {
-                        //更新专辑和声音的播放量
+                        // 只有首次消费成功才允许累加统计值。
                         trackInfoService.updateStat(trackStatMqVo);
                     }
                 }
             }
 
-            // 通过与队列的信道channel手动确认消息已成功处理，可以将其从队列中移除
-            // basicAck是RabbitMQ中用于确认消息的方法
-            // 参数1：deliveryTag，表示消息的唯一标识符
-            // 参数2：multiple，是否批量确认，false表示只确认当前这条消息
+            // 业务处理完成后才 ack；如果处理中抛异常，消息可按 RabbitMQ 策略重投。
             channel.basicAck(message.getMessageProperties().getDeliveryTag(),false);
         } finally {
             TraceContextUtil.end();

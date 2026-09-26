@@ -14,12 +14,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+/**
+ * 订单领域的 MQ 消费者。
+ *
+ * <p>支付服务确认成功后只发送订单号。订单服务收到消息后更新订单状态，并继续通知用户服务写入购买记录。
+ * 手动 ack 确保业务处理完成后消息才从队列删除。</p>
+ */
 @Component
 public class OrderReceiver {
 
     @Autowired
     private OrderInfoService orderInfoService;
-    //接收微信支付成功后发送异步消息，更新订单状态和异步调用，更新user_info表关于用户的信息
+    /** 消费支付成功消息，推进订单状态并生成用户购买记录。 */
     @SneakyThrows
     @RabbitListener(bindings = @QueueBinding(
             exchange = @Exchange(value = MqConst.EXCHANGE_ORDER, durable = "true"),
@@ -27,7 +33,7 @@ public class OrderReceiver {
             key = {MqConst.ROUTING_ORDER_PAY_SUCCESS}
     ))
     public void orderPaySuccess(String orderNo, Message message, Channel channel) {
-        TraceContextUtil.begin(); //MQ消费无HTTP头，各自生成新traceId
+        // MQ 消费没有 HTTP 请求头，需要为这条异步链路创建独立 traceId。
         try {
             if(StringUtils.hasText(orderNo)) {
                 orderInfoService.updateOrderSuccess(orderNo);

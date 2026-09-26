@@ -51,6 +51,9 @@ public class RedisCacheAspect {
     /** 自旋重试的最大次数，避免无限递归导致栈溢出 */
     private static final int MAX_RETRY = 3;
 
+    /**
+     * 缓存增强入口：先查 Redis，只有缓存未命中时才进入分布式锁和数据库回源流程。
+     */
     @Around("@annotation(com.atguigu.tingshu.common.RedisCache.annotation.RedisCache)")
     public Object redisCache(ProceedingJoinPoint joinPoint) throws Throwable {
         //获取被增强方法的参数列表
