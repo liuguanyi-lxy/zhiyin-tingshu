@@ -16,6 +16,12 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 
 import java.util.List;
 
+/**
+ * 专辑服务启动类。
+ *
+ * <p>除了启动 Spring Boot、注册 Nacos 服务和扫描 Feign 客户端外，启动完成后还会初始化专辑 ID 布隆过滤器。
+ * 该初始化让专辑详情查询可以在访问缓存和数据库前快速过滤随机不存在的 ID。</p>
+ */
 @SpringBootApplication
 //当应用启动时，@EnableDiscoveryClient 会自动配置并启动服务发现相关的组件
 //它会创建一个服务注册实例，该实例负责将当前服务的信息（如服务名、IP地址、端口号等）注册到配置的服务注册中心
@@ -43,11 +49,9 @@ public class ServiceAlbumApplication implements CommandLineRunner {
         SpringApplication.run(ServiceAlbumApplication.class, args);
     }
     /**
-     * Springboot应用初始化后会执行一次该方法,创建布隆过滤器加入到Ioc容器中，用于Controller层查询专辑时
-     * 访问缓存之前进行初步判断，因为在布隆过滤器中存储了数据库中所以专辑的ID，所以能够通过布隆过滤器的专辑ID
-     * 一定能在缓存和数据库中查询到，而没有通过的就一定查询不到，从而避免缓存随机穿透问题
-     * @param args
-     * @throws Exception
+     * 应用启动后加载现有专辑 ID。
+     *
+     * <p>布隆过滤器允许少量“误判存在”，但不会把真实存在的 ID 判断为不存在；因此未命中的 ID 可以安全地直接拒绝。</p>
      */
     public void run(String... args) throws Exception {
         logger.info("开始初始化布隆过滤器...");

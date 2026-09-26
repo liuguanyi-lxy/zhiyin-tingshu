@@ -11,6 +11,7 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
 
@@ -107,7 +108,6 @@ public class RabbitInitConfigApplicationListener implements ApplicationListener<
     private void retrySendMsg(CorrelationData correlationData) {
         //获取相关数据
         GuiguCorrelationData gmallCorrelationData = (GuiguCorrelationData) correlationData;
-
         //获取redis中存放重试次数
         //先重发，在写会到redis中次数
         int retryCount = gmallCorrelationData.getRetryCount();

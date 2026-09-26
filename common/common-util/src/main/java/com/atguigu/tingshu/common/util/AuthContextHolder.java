@@ -15,29 +15,37 @@ package com.atguigu.tingshu.common.util;
  */
 public class AuthContextHolder {
 
+    /** 当前请求对应的用户 ID；只在当前线程可见。 */
     private static ThreadLocal<Long> userId = new ThreadLocal<Long>();
+    /** 当前请求对应的用户名，预留给需要用户名的业务场景。 */
     private static ThreadLocal<String> username = new ThreadLocal<String>();
 
+    /** 在登录切面校验通过后写入用户 ID。 */
     public static void setUserId(Long _userId) {
         userId.set(_userId);
     }
 
+    /** 获取当前线程中的用户 ID；未建立上下文时返回 null。 */
     public static Long getUserId() {
         return userId.get();
     }
 
+    /** 请求结束时清理用户 ID，避免线程池复用造成数据串线。 */
     public static void removeUserId() {
         userId.remove();
     }
 
+    /** 写入当前线程的用户名。 */
     public static void setUsername(String _username) {
         username.set(_username);
     }
 
+    /** 获取当前线程的用户名。 */
     public static String getUsername() {
         return username.get();
     }
 
+    /** 请求结束时清理用户名。 */
     public static void removeUsername() {
         username.remove();
     }

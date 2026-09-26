@@ -84,8 +84,12 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     @Autowired
     private ObjectMapper objectMapper;
 
-    /*这是GlobalFilter接口的核心方法，定义了过滤器的实际逻辑
-    白名单直接放行；非白名单校验 header.token 在 Redis 中是否存在，不存在返回 208 登录过期*/
+    /**
+     * 网关过滤器的核心入口。
+     *
+     * <p>这里故意只做“是否允许请求继续转发”的判断，不解析用户对象，也不把用户信息写入线程上下文。
+     * 用户信息的解析由下游 Servlet 服务中的 {@code LoginAspect} 完成。</p>
+     */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
@@ -137,9 +141,9 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         }
     }
 
-    /*这是Ordered接口的方法，用于确定过滤器的执行顺序
-    返回值越小，过滤器优先级越高
-    这里返回0，表示较高的优先级（默认值）*/
+    /**
+     * 指定全局过滤器的执行顺序。数值越小，优先级越高；鉴权应尽量早于业务路由执行。
+     */
     @Override
     public int getOrder() {
         return 0;
