@@ -53,5 +53,21 @@
 1. `RabbitService` 先 `convertAndSend` 再写 Redis（顺序反了，confirm 极快时回调读不到）；returns 回调从 Redis 反序列化的对象 retryCount 恒为 0，重试计数不生效。
 2. `SignHelper.signKey` 硬编码 `"REDACTED"`，建议挪到 Nacos 配置。
 3. 消费异常无 basicNack/死信队列，消息 unacked 挂起；`SearchReceiver` 的 `@Retryable` 无效。
-4. `service-live` 空壳；测试覆盖仅 SignHelperTest；fastjson 1.2.29 有已知漏洞，建议换 fastjson2 或 jackson。
+4. `service-live` 空壳；fastjson 1.2.29 有已知漏洞，建议换 fastjson2 或 jackson。
 5. `AlbumInfoServiceImpl.removeAlbumInfo`/`updateAlbumInfo` 多表操作未加事务。
+
+## 补充：单元测试补齐（2026-09-28）
+
+全部为纯 Mockito 单元测试（不起 Spring 容器、不依赖中间件，秒级执行）：
+
+| 测试类 | 数量 | 锁定的行为 |
+|---|---|---|
+| `service-payment/.../PaymentInfoServiceImplTest` | 6 | 回调金额校验拒绝篡改、幂等（重复回调不发 MQ）、订单/充值 MQ 路由、支付记录复用不重复插入 |
+| `service-account/.../RechargeInfoServiceImplTest` | 4 | 充值幂等（重复消息不重复加钱）、记录/账户缺失报错 |
+| `service-order/.../OrderInfoServiceImplTest` | 3 | 订单幂等（重复消息不重复发权益）、权益内容正确、订单缺失报错 |
+| `service-album/.../AlbumStatUpdateTest` | 4 | 统计原子累加行数判定、声音→专辑统计联动 |
+| `service-search/.../ItemServiceImplTest` | 2 | 四路 Feign 聚合完整性、上游缺失报错 |
+| `server-gateway/.../AuthGlobalFilterWhitelistTest` | 6 | 白名单安全回归：fileUpload/支付轮询必须登录、VIP 精确路径、数字 id 正则 |
+
+同时移除了 5 个模块 pom 里的 `<skipTests>true</skipTests>`（此前 Maven 构建根本不执行测试），
+`mvn test` 现为项目标准验证手段。
