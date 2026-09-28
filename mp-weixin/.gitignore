@@ -1,0 +1,4 @@
+# 小程序为 uni-app 编译产物（源码已遗失，此目录为唯一可运行副本）
+node_modules/
+.DS_Store
+Thumbs.db

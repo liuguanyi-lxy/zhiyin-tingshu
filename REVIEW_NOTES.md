@@ -32,7 +32,7 @@
 ### #4 网关白名单
 - 移除 `/api/album/fileUpload`（匿名可向 MinIO 任意传文件）与 `/api/payment/wxPay/queryPayStatus/**`（会触发改库发 MQ 的写操作）。
 - `/api/user/vipServiceConfig/**` 收紧为精确路径 `/findAll`（前端只调用了它）。
-- **配套前端改动**（前端仓库单独提交）：编译产物 `cl-upload.js` 上传请求注入登录 token，否则收紧后封面上传会被 208 拦截。
+- **配套前端改动**：编译产物 `mp-weixin/uni_modules/cl-upload/components/cl-upload/cl-upload.js` 上传请求注入登录 token，否则收紧后封面上传会被 208 拦截（该改动已随前端目录并入本仓库）。
 - `/api/payment/wxPay/notify` 保留白名单（微信服务器无 token），安全由 #5 的验签保证。
 
 ### #5 支付回调链路（改动最大，重点 review）
