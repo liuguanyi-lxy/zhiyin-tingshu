@@ -30,6 +30,7 @@ import com.atguigu.tingshu.vo.order.TradeVo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -80,16 +81,20 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     //根据订单编号修改订单状态（已经支付），远程调用添加用户购买记录
     @Override
     public void updateOrderSuccess(String orderNo) {
-        //根据订单编号修改订单状态（已经支付）
-        //根据订单编号查询订单对象
+        //根据订单编号查询订单对象（用于发放权益）
         OrderInfo orderInfo = this.getOrderInfoByOrderNo(orderNo);
-        //订单状态是未支付修改
-        if (orderInfo.getOrderStatus().equals(SystemConstant.ORDER_STATUS_UNPAID)) {
-            //订单对象设置订单状态值为已支付
-            //SystemConstant.ORDER_STATUS_PAID
-            orderInfo.setOrderStatus(SystemConstant.ORDER_STATUS_PAID);
-            //调用方法进行修改
-            orderInfoMapper.updateById(orderInfo);
+        Assert.notNull(orderInfo, "订单不存在: " + orderNo);
+
+        //【修复#5】条件更新实现幂等：仅"未支付→已支付"更新成功（受影响行数>0）才发放权益。
+        // 原实现"先查状态再 updateById"是 check-then-act，并发回调/重复 MQ 消息会重复发放
+        // 购买记录，VIP 记录重复发放还会叠加续期时长。
+        int rows = orderInfoMapper.update(null, new LambdaUpdateWrapper<OrderInfo>()
+                .eq(OrderInfo::getOrderNo, orderNo)
+                .eq(OrderInfo::getOrderStatus, SystemConstant.ORDER_STATUS_UNPAID)
+                .set(OrderInfo::getOrderStatus, SystemConstant.ORDER_STATUS_PAID));
+        if (rows == 0) {
+            log.info("[订单支付成功] 订单已处理，忽略重复消息: {}", orderNo);
+            return;
         }
 
         //远程调用添加用户购买记录

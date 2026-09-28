@@ -23,5 +23,15 @@
 		  AND is_deleted = 0
 	</update>
 
+	<!--【修复#5】充值入账原子累加，与扣减侧 checkAndDeduct 保持同一并发安全策略-->
+	<update id="incrTotalAndAvailable">
+		UPDATE user_account
+		SET total_amount = total_amount + #{amount},
+			available_amount = available_amount + #{amount}
+		WHERE
+			user_id = #{userId}
+		  AND is_deleted = 0
+	</update>
+
 </mapper>
 

@@ -1,6 +1,7 @@
 package com.atguigu.tingshu.account.service.impl;
 
 import com.atguigu.tingshu.account.mapper.RechargeInfoMapper;
+import com.atguigu.tingshu.account.mapper.UserAccountMapper;
 import com.atguigu.tingshu.account.service.RechargeInfoService;
 import com.atguigu.tingshu.account.service.UserAccountService;
 import com.atguigu.tingshu.common.constant.SystemConstant;
@@ -8,9 +9,11 @@ import com.atguigu.tingshu.model.account.RechargeInfo;
 import com.atguigu.tingshu.model.account.UserAccount;
 import com.atguigu.tingshu.vo.account.RechargeInfoVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -20,36 +23,30 @@ import java.util.UUID;
 public class RechargeInfoServiceImpl extends ServiceImpl<RechargeInfoMapper, RechargeInfo> implements RechargeInfoService {
 	@Autowired
 	private UserAccountService userAccountService;
+	@Autowired
+	private UserAccountMapper userAccountMapper;
 	//根据充值记录编号修改充值记录
 	@Override
 	public void rechargePaySuccess(String orderNo) {
 		// 获取到充值信息对象
 		RechargeInfo rechargeInfo = this.getRechargeInfo(orderNo);
-		// 如果当前状态是已支付，则直接返回
-		if (SystemConstant.ORDER_STATUS_PAID.equals(rechargeInfo.getRechargeStatus())) return;
-		// 否则赋值为已支付状态
-		rechargeInfo.setRechargeStatus(SystemConstant.ORDER_STATUS_PAID);
-		// 更新数据
-		this.updateById(rechargeInfo);
+		Assert.notNull(rechargeInfo, "充值记录不存在");
 
-		//更新账户金额
-		//获取充值金额
-		BigDecimal rechargeAmount = rechargeInfo.getRechargeAmount();
-		//获取账户原始金额
-		Long userId = rechargeInfo.getUserId();
-		LambdaQueryWrapper<UserAccount> wrapper = new LambdaQueryWrapper<>();
-		wrapper.eq(UserAccount::getUserId, userId);
+		//【修复#5】条件更新实现幂等：仅"未支付→已支付"更新成功（受影响行数>0）才入账，
+		// 重复消费的 MQ 消息或并发回调在此处被挡住，避免重复加钱。
+		// 原实现"先查状态再 updateById"是 check-then-act，并发下会双重入账。
+		int rows = this.baseMapper.update(null, new LambdaUpdateWrapper<RechargeInfo>()
+				.eq(RechargeInfo::getOrderNo, orderNo)
+				.eq(RechargeInfo::getRechargeStatus, SystemConstant.ORDER_STATUS_UNPAID)
+				.set(RechargeInfo::getRechargeStatus, SystemConstant.ORDER_STATUS_PAID));
+		if (rows == 0) {
+			return;
+		}
 
-		UserAccount userAccount = userAccountService.getOne(wrapper);
-		//调用
-		userAccount.setTotalAmount(userAccount.getTotalAmount()
-				.add(rechargeAmount));
-		userAccount.setAvailableAmount(userAccount.getAvailableAmount()
-				.add(rechargeAmount));
-
-		LambdaQueryWrapper<UserAccount> wrapper1 = new LambdaQueryWrapper<>();
-		wrapper1.eq(UserAccount::getUserId, userId);
-		userAccountService.update(userAccount,wrapper1);
+		//【修复#5】账户金额改为数据库原子累加（total_amount = total_amount + n），
+		// 原实现"getOne → 内存加 → update"在并发下会丢失更新。
+		int accountRows = userAccountMapper.incrTotalAndAvailable(rechargeInfo.getRechargeAmount(), rechargeInfo.getUserId());
+		Assert.isTrue(accountRows > 0, "用户账户不存在");
 	}
 
 	//根据充值订单编号查询充值记录

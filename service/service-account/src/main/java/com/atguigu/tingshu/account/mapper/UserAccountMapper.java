@@ -10,4 +10,7 @@ import java.math.BigDecimal;
 public interface UserAccountMapper extends BaseMapper<UserAccount> {
     //检查账户余额是否充足，充足就扣减余额
     int checkAndDeduct(BigDecimal amount, Long userId);
+
+    //【修复#5】充值入账：数据库原子累加余额，替代"先查后改"的丢失更新写法
+    int incrTotalAndAvailable(BigDecimal amount, Long userId);
 }
