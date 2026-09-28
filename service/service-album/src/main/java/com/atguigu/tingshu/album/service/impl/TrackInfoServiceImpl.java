@@ -302,8 +302,10 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 					Map<Long, Integer> TrackPaidMap = mapResult.getData();
 					Assert.notNull(TrackPaidMap,"用户是否购买专辑或者声音信息不存在");
 					//遍历albumTrackListVoList，判断声音的排序是否大于试听数量并且根据声音ID取出mapResult的value判断是否购买，如果声音排序大于FreeNum并且未购买，将isShowPaidMark设置为true
+					//【修复NPE】TrackPaidMap 可能不含某些声音的 key（下游只返回部分数据），get 返回 null 直接 equals 会 NPE；
+					// 改 Objects.equals，缺 key 视为未购买
 					albumTrackListVoList.forEach(item->{
-						if(item.getOrderNum()>FreeNum&&TrackPaidMap.get(item.getTrackId()).equals(SystemConstant.TRACK_NOT_BUY))
+						if(item.getOrderNum()>FreeNum&&Objects.equals(TrackPaidMap.get(item.getTrackId()),SystemConstant.TRACK_NOT_BUY))
 						{
 							item.setIsShowPaidMark(true);
 						}
