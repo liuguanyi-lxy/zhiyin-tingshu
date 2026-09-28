@@ -226,16 +226,9 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 	//更新专辑和声音的播放量
 	@Override
 	public void updateStat(TrackStatMqVo trackStatMqVo) {
-		LambdaQueryWrapper<TrackStat> wrapper = new LambdaQueryWrapper<>();
-		wrapper.eq(TrackStat::getTrackId,trackStatMqVo.getTrackId());
-		wrapper.eq(TrackStat::getStatType,trackStatMqVo.getStatType());
-		//根据声音ID的统计类型获取对应的数据
-		TrackStat trackStat = trackStatMapper.selectOne(wrapper);
-		Assert.notNull(trackStat,"声音统计信息不存在");
-		//修改声音的播放量的值
-		trackStat.setStatNum(trackStat.getStatNum()+trackStatMqVo.getCount());
-		//更新声音的播放量
-		trackStatMapper.updateById(trackStat);
+		//【修复#3】同 AlbumInfoServiceImpl.updateStat：原子累加替代"先查后改"，避免并发丢失更新
+		int rows = trackStatMapper.incrTrackStatNum(trackStatMqVo.getTrackId(), trackStatMqVo.getStatType(), trackStatMqVo.getCount());
+		Assert.isTrue(rows > 0, "声音统计信息不存在");
 		//更新专辑的播放量
 		albumInfoService.updateStat(trackStatMqVo.getAlbumId(),trackStatMqVo.getStatType(),trackStatMqVo.getCount());
 	}

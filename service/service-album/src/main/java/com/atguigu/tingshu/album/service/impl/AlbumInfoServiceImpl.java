@@ -59,15 +59,11 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 	//根据专辑ID和专辑对应统计类型修改播放量
 	@Override
 	public void updateStat(Long albumId, String statType,Integer count) {
-		//根据专辑ID和统计类型查询专辑统计信息
-		LambdaQueryWrapper<AlbumStat> wrapper = new LambdaQueryWrapper<>();
-		wrapper.eq(AlbumStat::getAlbumId,albumId);
-		wrapper.eq(AlbumStat::getStatType,SystemConstant.ALBUM_STAT_PLAY);
-		AlbumStat albumStat = albumStatMapper.selectOne(wrapper);
-		Assert.notNull(albumStat, "专辑统计信息不存在");
-		//对专辑播放量进行修改
-		albumStat.setStatNum(albumStat.getStatNum()+count);
-		albumStatMapper.updateById(albumStat);
+		//【修复#3】原实现"selectOne → 内存加 → updateById"在并发下会丢失更新；
+		// 且原实现写死了 SystemConstant.ALBUM_STAT_PLAY，传入的 statType 被忽略，一并修正。
+		// 改为数据库原子累加，受影响行数为 0 说明统计记录不存在。
+		int rows = albumStatMapper.incrAlbumStatNum(albumId, statType, count);
+		Assert.isTrue(rows > 0, "专辑统计信息不存在");
 	}
 
 	//根据专辑ID获取专辑的标签列表
