@@ -25,3 +25,9 @@ logs/
 .DS_Store
 Thumbs.db
 hs_err_pid*
+
+# AI 生成的话术/题库/测试报告等资料，不入项目仓库（移至外部目录保管）
+TEST_PLAN.md
+TEST_REPORT.md
+Q&A_200.md
+INTERVIEW_GUIDE.md
