@@ -149,6 +149,10 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         map.put("payWay", SystemConstant.ORDER_PAY_WAY_WEIXIN);
         //使用SignHelper工具类对map进行校验,有问题则会抛出异常
         SignHelper.checkSign(map);
+        //【修复#6】参与验签的 payWay 与实际下单使用的 payWay 必须同源：
+        // 原实现只覆盖了 map，而下方分支读取的是 orderInfoVo.getPayWay() 原值——
+        // 签名对 payWay 字段实际失效，前端可提交任意 payWay 且验签照样通过。校验通过后同步覆盖 VO。
+        orderInfoVo.setPayWay(SystemConstant.ORDER_PAY_WAY_WEIXIN);
         //2.判断订单信息是否被重复提交
         //获取传入的tradeNo
         String tradeNo = orderInfoVo.getTradeNo();
