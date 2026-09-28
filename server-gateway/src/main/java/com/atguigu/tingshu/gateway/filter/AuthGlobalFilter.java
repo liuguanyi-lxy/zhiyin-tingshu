@@ -42,10 +42,8 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final List<String> WHITE_LIST = Arrays.asList(
             // 登录接口本身
             "/api/user/wxLogin/wxLogin/**",
-            // 微信支付回调（微信服务器无 token）
+            // 微信支付回调（微信服务器无 token，安全性由支付验签保证，见 WxPayApiController#notify）
             "/api/payment/wxPay/notify",
-            // 支付状态轮询
-            "/api/payment/wxPay/queryPayStatus/**",
             // WebSocket 握手（浏览器无法携带自定义 header）
             "/api/websocket/**",
             // 搜索
@@ -64,17 +62,20 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/album/albumInfo/getAlbumInfo/**",
             "/api/album/albumInfo/getAlbumInfoStat/**",
             "/api/album/albumInfo/findAlbumAttributeValue/**",
-            // 文件上传
-            "/api/album/fileUpload",
             // 声音分页列表（可登录可不登录）
             "/api/album/trackInfo/findAlbumTrackPage/**",
             // 判断当前用户是否购买过声音（可登录可不登录）
             "/api/user/userInfo/userIsPaidTrack/**",
-            // VIP 配置查询
-            "/api/user/vipServiceConfig/**",
+            // VIP 配置查询——【修复#4】由 /** 收紧为精确路径，避免将来新增管理端点被连带放行
+            "/api/user/vipServiceConfig/findAll",
             // 充值单查询
             "/api/account/rechargeInfo/getRechargeInfo/**"
     );
+    //【修复#4】以下路径从白名单移除，改为必须登录：
+    // 1. /api/album/fileUpload —— 文件上传原为匿名放行，任何人可向 MinIO 任意传文件；
+    //    前端上传组件已同步补充 token 头（见 cl-upload.js）。
+    // 2. /api/payment/wxPay/queryPayStatus/** —— 该接口会触发改库/发 MQ，属写操作，
+    //    支付轮询时用户必然已登录（request.js 统一携带 token），不应匿名放行。
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
