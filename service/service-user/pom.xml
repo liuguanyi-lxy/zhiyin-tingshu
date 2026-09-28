@@ -13,10 +13,6 @@
     <packaging>jar</packaging>
     <version>1.0</version>
 
-    <properties>
-        <skipTests>true</skipTests>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.atguigu.tingshu</groupId>
