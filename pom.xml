@@ -30,7 +30,7 @@
         <mybatis-plus.version>3.5.3.1</mybatis-plus.version>
         <mysql.version>8.0.30</mysql.version>
         <knife4j.version>4.1.0</knife4j.version>
-        <fastjson.version>1.2.29</fastjson.version>
+        <fastjson.version>1.2.83</fastjson.version><!--【修复#6】1.2.29 有已知反序列化漏洞；1.2.83 为 1.x 最终安全版，API 兼容。长期建议迁移 fastjson2 -->
         <vod_api.version>2.1.4</vod_api.version>
         <minio.version>8.2.0</minio.version>
         <jodatime.version>2.10.1</jodatime.version>
@@ -172,6 +172,22 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <!--【修复#4】覆盖率报告：mvn test 后在各模块 target/site/jacoco/ 生成，jacoco.csv 供汇总 -->
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.10</version>
+                <executions>
+                    <execution>
+                        <goals><goal>prepare-agent</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
