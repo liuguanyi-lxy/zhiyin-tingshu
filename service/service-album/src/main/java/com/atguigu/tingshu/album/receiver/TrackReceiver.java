@@ -7,6 +7,7 @@ import com.atguigu.tingshu.common.util.TraceContextUtil;
 import com.atguigu.tingshu.vo.album.TrackStatMqVo;
 import com.rabbitmq.client.Channel;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.Exchange;
 import org.springframework.amqp.rabbit.annotation.Queue;
@@ -25,6 +26,7 @@ import java.util.concurrent.TimeUnit;
  * <p>播放量更新不阻塞用户播放请求，而是通过 MQ 异步落库。消费者用业务编号在 Redis 中做幂等控制，
  * 这样即使生产者重试或 RabbitMQ 重投，也不会重复累加统计值。</p>
  */
+@Slf4j
 @Component
 public class TrackReceiver {
 
@@ -60,12 +62,18 @@ public class TrackReceiver {
                     //3 如果添加成功，证明第一次消费，就对播放量进行更新
                     if(setIfAbsent) {
                         // 只有首次消费成功才允许累加统计值。
-                        trackInfoService.updateStat(trackStatMqVo);
+                        try {
+                            trackInfoService.updateStat(trackStatMqVo);
+                        } catch (Exception e) {
+                            //【毒消息防护】统计为原子累加（幂等），重投无法恢复数据级失败，记日志后照常 ack
+                            log.error("[播放统计] 更新失败，businessNo={}, albumId={}, trackId={}",
+                                    businessNo, trackStatMqVo.getAlbumId(), trackStatMqVo.getTrackId(), e);
+                        }
                     }
                 }
             }
 
-            // 业务处理完成后才 ack；如果处理中抛异常，消息可按 RabbitMQ 策略重投。
+            // ack：业务失败已捕获并记日志，不无限重投（生产环境建议 DLX + 人工干预台）
             channel.basicAck(message.getMessageProperties().getDeliveryTag(),false);
         } finally {
             TraceContextUtil.end();

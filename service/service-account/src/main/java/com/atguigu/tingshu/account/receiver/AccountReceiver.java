@@ -37,7 +37,12 @@ public class AccountReceiver {
         TraceContextUtil.begin(); //MQ消费无HTTP头，各自生成新traceId
         try {
             if(userId != null) {
-                userAccountService.addUserAccount(userId);
+                try {
+                    userAccountService.addUserAccount(userId);
+                } catch (Exception e) {
+                    // 毒消息防护：初始化失败重投无法恢复，记日志后照常 ack
+                    log.error("[账户消费者] 用户账户初始化失败，userId={}", userId, e);
+                }
             }
             //告诉 RabbitMQ 该消息已经成功处理，可以将其从队列中删除。false：表示不批量确认，仅确认当前这条消息
             // Channel是RabbitMQ 原生的通道，主要用于手动确认消息
@@ -65,8 +70,13 @@ public class AccountReceiver {
             log.info("充值成功通知: {}", orderNo);
             //业务处理
             if (StringUtils.hasText(orderNo)){
-                //通知更新用户账号
-                rechargeInfoService.rechargePaySuccess(orderNo);
+                try {
+                    //通知更新用户账号
+                    rechargeInfoService.rechargePaySuccess(orderNo);
+                } catch (Exception e) {
+                    // 毒消息防护：充值入账是条件更新（幂等），重投无法恢复数据级失败，记日志后照常 ack
+                    log.error("[账户消费者] 充值入账失败，orderNo={}", orderNo, e);
+                }
             }
 
             //手动应答
