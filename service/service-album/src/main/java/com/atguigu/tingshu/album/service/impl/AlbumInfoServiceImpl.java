@@ -101,6 +101,8 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 	}
 
 	//根据前端传入的专辑ID和专辑信息进行修改
+	//【修复#7】多表写操作（album_info/album_attribute_value/track_info），补事务保证一致性
+	@Transactional(rollbackFor = Exception.class)
 	@Override
 	public void updateAlbumInfo(Long albumId, AlbumInfoVo albumInfoVo) {
 		//1.修改专辑基本信息album_info
@@ -163,6 +165,8 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 	}
 
 	//根据专辑ID删除专辑相关的数据
+	//【修复#7】多表删除（album_info/album_attribute_value/track_info/album_stat），补事务保证一致性
+	@Transactional(rollbackFor = Exception.class)
 	@Override
 	public void removeAlbumInfo(String albumId) {
 		//删除专辑之前需要判断专辑是否包含声音，包含就不能删除

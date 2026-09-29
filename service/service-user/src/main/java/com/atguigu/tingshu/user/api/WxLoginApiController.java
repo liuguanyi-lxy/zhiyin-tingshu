@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.error.WxErrorException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -29,7 +28,8 @@ import java.util.concurrent.TimeUnit;
 @RestController
 @RequestMapping("/api/user/wxLogin")
 @Slf4j
-@Transactional
+//【修复#8】移除类级 @Transactional：事务应收敛在服务层数据库写方法上；
+// controller 挂事务会把 code2Session 的 HTTP 调用圈进事务，长时间占用数据库连接
 public class WxLoginApiController {
 
     @Autowired
