@@ -349,4 +349,16 @@ class UserInfoServiceImplTest {
             assertEquals(SystemConstant.TRACK_NOT_BUY, map.get(2L));
         }
     }
+
+    /**【回归锁】CDC 对齐契约：UserCdcHandler 删除的 key 必须与 @RedisCache 生成格式一致 */
+    @Test
+    void getUserInfoVoByUserId_cachePrefix_staysAlignedWithCdcHandler() throws Exception {
+        java.lang.reflect.Method method = UserInfoServiceImpl.class.getMethod("getUserInfoVoByUserId", Long.class);
+        com.atguigu.tingshu.common.RedisCache.annotation.RedisCache redisCache =
+                method.getAnnotation(com.atguigu.tingshu.common.RedisCache.annotation.RedisCache.class);
+
+        org.junit.jupiter.api.Assertions.assertNotNull(redisCache, "getUserInfoVoByUserId 必须带 @RedisCache，否则 user_info 的 CDC 缓存失效链路失效");
+        org.junit.jupiter.api.Assertions.assertEquals("userInfoVo:", redisCache.prefix(),
+                "prefix 变更会破坏 UserCdcHandler 的 key 对齐（CDC 删除 userInfoVo:[id]）");
+    }
 }

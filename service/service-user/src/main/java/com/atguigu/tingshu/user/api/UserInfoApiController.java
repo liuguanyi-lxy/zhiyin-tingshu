@@ -30,22 +30,16 @@ public class UserInfoApiController {
 	private UserInfoService userInfoService;
 	/**
 	 * 远程调用接口:根据用户Id获取用户信息
+	 * 【修复#UserCdc】原实现与 WxLoginApiController 各自拼装 UserInfoVo，逻辑重复且绕过了
+	 * getUserInfoVoByUserId 上的 @RedisCache 缓存；现统一收敛到服务层同一方法，
+	 * 命中 "userInfoVo:[userId]" 缓存，CDC 变更时同步失效
 	 * @param userId
 	 * @return
 	 */
 	@Operation(summary = "根据用户id获取用户信息")
 	@GetMapping("getUserInfoVo/{userId}")
 	public Result<UserInfoVo> getUserInfoVo(@PathVariable Long userId) {
-
-		UserInfo userInfo = userInfoService.getById(userId);
-		log.info("userid:{}",userId);
-		Assert.notNull(userInfo, String.valueOf(ResultCodeEnum.DATA_ERROR));
-		// 创建UserInfoVo 对象
-		UserInfoVo userInfoVo = new UserInfoVo();
-		// 属性拷贝
-		BeanUtils.copyProperties(userInfo,userInfoVo);
-
-		return Result.ok(userInfoVo);
+		return Result.ok(userInfoService.getUserInfoVoByUserId(userId));
 	}
 	//根据用户id查询用户是否购买专辑或者声音
 	@LoginVerification(required = false)

@@ -2,6 +2,7 @@ package com.atguigu.tingshu.user.service.impl;
 
 import com.atguigu.tingshu.account.client.UserAccountFeignClient;
 import com.atguigu.tingshu.album.client.TrackInfoFeignClient;
+import com.atguigu.tingshu.common.RedisCache.annotation.RedisCache;
 import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.execption.GuiguException;
 import com.atguigu.tingshu.common.result.Result;
@@ -239,12 +240,16 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 	}
 
 	@Override
+	//【修复#UserCdc】加缓存使 user_info 的 CDC 链路真正生效：
+	// 生成的 key 形如 "userInfoVo:[8]"，UserCdcHandler 监听 user_info 表增删改后删除同格式 key，
+	// 用户更新资料（updateUser）与 VIP 到期批量刷新（updateIsVip）都写 user_info 表，binlog 变更即缓存失效
+	@RedisCache(prefix = "userInfoVo:")
 	public UserInfoVo getUserInfoVoByUserId(Long userId) {
 		//	获取到用户信息对象
 		UserInfo userInfo = this.getById(userId);
 		if (userInfo == null) {
-			// 抛出自定义异常或返回 null，视业务需求而定
-			throw new GuiguException(ResultCodeEnum.LOGIN_AUTH); // 假设这是你的自定义异常
+			// 用户不存在属于数据异常而非登录过期（该方法同时被 Feign 内部调用，208 语义留给鉴权层）
+			throw new GuiguException(ResultCodeEnum.DATA_ERROR);
 		}
 		//	创建UserInfoVo 对象
 		UserInfoVo userInfoVo = new UserInfoVo();

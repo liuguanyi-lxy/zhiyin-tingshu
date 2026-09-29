@@ -29,7 +29,9 @@ public class UserCdcHandler implements EntryHandler<CDCEntity> {
     @Override
     public void update(CDCEntity before, CDCEntity after) {
         log.info("监听到数据修改,ID:{}", after.getId());
-        String key = "userInfoVo:" + after.getId();
+        // 与 UserInfoServiceImpl#getUserInfoVoByUserId 的 @RedisCache(prefix="userInfoVo:") key
+        // 拼接规则保持一致：prefix + Arrays.toString(args) = "userInfoVo:[id]"
+        String key = "userInfoVo:[" + after.getId() + "]";
         redisTemplate.delete(key);
 
     }
@@ -41,7 +43,8 @@ public class UserCdcHandler implements EntryHandler<CDCEntity> {
     @Override
     public void delete(CDCEntity cdcEntity) {
         log.info("监听到数据删除,ID:{}", cdcEntity.getId());
-        String key = "userInfoVo:" + cdcEntity.getId();
+        // key 格式与 update 侧一致：userInfoVo:[id]
+        String key = "userInfoVo:[" + cdcEntity.getId() + "]";
         redisTemplate.delete(key);
     }
 }
