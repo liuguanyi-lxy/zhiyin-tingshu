@@ -45,11 +45,6 @@
     </appender>
 
     <!-- logstash日志 -->
-    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-        <!-- logstash ip和暴露的端口，logback就是通过这个地址把日志发送给logstash -->
-        <destination>192.168.13.100:5044</destination>
-        <encoder charset="UTF-8" class="net.logstash.logback.encoder.LogstashEncoder" />
-    </appender>
 
     <!-- 开发环境 -->
     <springProfile name="dev">
@@ -58,9 +53,24 @@
         <!-- 根日志记录器：INFO级别  -->
         <root level="INFO">
             <appender-ref ref="CONSOLE" />
-            <appender-ref ref="LOGSTASH" />  <!-- 将日志输出到Logstash，用于日志收集和分析 -->
+            <!-- LOGSTASH 引用移至下方 springProfile name="logstash" 中，按需启用 -->
 <!--            <appender-ref ref="FILE" />-->
         </root>
     </springProfile>
 
+
+    <!-- 【修复#9】Logstash 推送改为按需启用：激活 logstash profile 时才连接
+         （-Dspring.profiles.active=dev,logstash 或 Nacos 中配置），destination 可由
+         logstash.destination 属性覆盖，避免环境不可达时反复报连接失败 -->
+    <springProperty name="LOGSTASH_DEST" source="logstash.destination" defaultValue="192.168.13.100:5044"/>
+    <springProfile name="logstash">
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <!-- logstash ip和暴露的端口，logback就是通过这个地址把日志发送给logstash -->
+        <destination>${LOGSTASH_DEST}</destination>
+        <encoder charset="UTF-8" class="net.logstash.logback.encoder.LogstashEncoder" />
+    </appender>
+        <root level="INFO">
+            <appender-ref ref="LOGSTASH" />
+        </root>
+    </springProfile>
 </configuration>
