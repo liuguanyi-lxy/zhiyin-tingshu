@@ -62,4 +62,14 @@ class AuthGlobalFilterWhitelistTest {
     void login_isWhitelisted() {
         assertTrue(whitelisted("/api/user/wxLogin/wxLogin/abc123"));
     }
+
+    @Test
+    void commentBrowse_whitelistedButWritesRequireLogin() {
+        // 评论浏览匿名可看（与专辑声音列表同级）
+        assertTrue(whitelisted("/api/comment/findCommentPage/1/0/1/10"));
+        // 发布/点赞/删除必须登录
+        assertFalse(whitelisted("/api/comment/save"));
+        assertFalse(whitelisted("/api/comment/praise/1/abc"));
+        assertFalse(whitelisted("/api/comment/remove/1/abc"));
+    }
 }

@@ -64,6 +64,8 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/album/albumInfo/findAlbumAttributeValue/**",
             // 声音分页列表（可登录可不登录）
             "/api/album/trackInfo/findAlbumTrackPage/**",
+            // 评论浏览（可登录可不登录；发布/点赞/删除仍需登录，不在白名单）
+            "/api/comment/findCommentPage/**",
             // 判断当前用户是否购买过声音（可登录可不登录）
             "/api/user/userInfo/userIsPaidTrack/**",
             // VIP 配置查询——【修复#4】由 /** 收紧为精确路径，避免将来新增管理端点被连带放行
