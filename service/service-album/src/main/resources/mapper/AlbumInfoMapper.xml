@@ -37,5 +37,13 @@
             group by album_info.id
             order by album_info.id desc
     </select>
+    <!--【压测基线】LIKE 模糊匹配：%kw% 无法走索引，10 万级数据下全表扫描，
+         与 ES 倒排索引检索形成性能对照（配合 docs/压测指引.md 使用）-->
+    <select id="selectLikeBenchmark" resultType="java.util.HashMap">
+        select id, album_title title
+        from album_info
+        where album_title like concat('%', #{keyword}, '%') and is_deleted = 0
+        limit 20
+    </select>
 </mapper>
 

@@ -76,6 +76,17 @@ public class AlbumInfoApiController {
 		return Result.ok();
 	}
 	/**
+	 * 【压测基线】LIKE 模糊查询（%kw% 不走索引），与 ES 检索形成性能对照。
+	 * 配合 docs/压测指引.md 使用；压测时直连本服务 8501 端口（不经网关，隔离对照变量）。
+	 */
+	@LoginVerification(required = false)
+	@Operation(summary = "LIKE 检索性能基线（压测用）")
+	@GetMapping("likeBenchmark/{keyword}")
+	public Result likeBenchmark(@PathVariable String keyword) {
+		return Result.ok(albumInfoService.likeBenchmark(keyword));
+	}
+
+	/**
 	 * 查询专辑详情。
 	 *
 	 * <p>先用布隆过滤器拦截明显不存在的 ID，再进入缓存切面和数据库查询，避免恶意随机 ID 直接穿透到数据库。</p>

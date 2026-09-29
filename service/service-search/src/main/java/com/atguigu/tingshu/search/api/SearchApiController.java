@@ -47,11 +47,11 @@ public class SearchApiController {
      * 批量上架
      * @return
      */
-    @Operation(summary = "批量上架专辑数据到es中，用于搜索时有数据")
-    @GetMapping("batchUpperAlbum")
-    public Result batchUpperAlbum(){
+    @Operation(summary = "批量上架专辑数据到es中，用于搜索时有数据；【压测配套】上限参数化，可灌 10 万级数据")
+    @GetMapping("batchUpperAlbum/{upperId}")
+    public Result batchUpperAlbum(@PathVariable long upperId){
         //  循环
-        for (long i = 1; i <= 1500; i++) {
+        for (long i = 1; i <= upperId; i++) {
             searchService.upperAlbum(i);
         }
         //  返回数据

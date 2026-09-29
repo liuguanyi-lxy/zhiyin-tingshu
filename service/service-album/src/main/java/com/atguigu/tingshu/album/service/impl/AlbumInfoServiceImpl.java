@@ -252,4 +252,10 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 		albumStat.setStatNum(0);
 		albumStatMapper.insert(albumStat);
 	}
+
+	//【压测基线】LIKE 模糊查询（%kw% 不走索引），与 ES 检索形成性能对照
+	@Override
+	public java.util.List<java.util.Map<String, Object>> likeBenchmark(String keyword) {
+		return albumInfoMapper.selectLikeBenchmark(keyword);
+	}
 }
