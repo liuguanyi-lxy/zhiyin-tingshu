@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * 敏感词 DFA 过滤单元测试。
@@ -50,6 +51,17 @@ class SensitiveWordFilterUtilTest {
         String result = SensitiveWordFilterUtil.replaceSensitiveWord("敏感词A敏感词B敏感词");
 
         assertEquals("***A***B***", result);
+    }
+
+    @Test
+    void builtModel_filtersSingleCharWord() {
+        //【回归锁】原实现 matchFlag < 2 导致单字敏感词永远无法命中，已修复
+        SensitiveWordFilterUtil.buildDFAModel(Collections.singletonList("笨"));
+
+        String result = SensitiveWordFilterUtil.replaceSensitiveWord("这个笨产品");
+
+        assertFalse(result.contains("笨"));
+        assertEquals("这个*产品", result);
     }
 
     @Test
