@@ -31,3 +31,6 @@ TEST_PLAN.md
 TEST_REPORT.md
 Q&A_200.md
 INTERVIEW_GUIDE.md
+
+# JMeter 误存的临时空测试计划
+Thread Group.jmx
