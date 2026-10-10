@@ -1,5 +1,26 @@
 # 压测任务 · 进度与下次继续步骤
 
+> ## ✅ 任务已完成（2026-10-10）
+>
+> **最终实测数据**（10 万级语料：MySQL 100,608 行 = ES 100,608 文档；JMeter 10 并发 × 1000 采样，错误率 0%）：
+>
+> | 指标 | LIKE 基线（MySQL 全表扫描） | ES 检索（倒排索引） | 提升 |
+> |---|---|---|---|
+> | 平均 | 559ms | 18ms | 30.8x |
+> | 中位数 | 545ms | 16ms | 34.1x |
+> | P90 | 768ms | 24ms | 32.0x |
+>
+> 原始采样归档：`求职资料/压测结果/result-like.csv`、`result-es.csv`。
+> 已回填三版简历（`D:\java_study\简历\AI定制简历\`）。
+>
+> **执行路径备忘**：直连 MySQL 被连接数打满 + app 灌数管线过慢（5h）→ 改用
+> `docs/压测/bulk_load_from_api.py`（以 ES 现存 1500 条真实文档为模板重建 10 万语料，
+> 90 秒灌完，0 错误）。JMeter jmx 关键修复：CSVDataSet 属性名 `variableNames`（复数）、
+> LIKE 路径中文关键词必须预编码（`keywords_encoded.txt`）、CSVDataSet 放入 ThreadGroup。
+> JMeter 安装位置：`D:\Serverpache-jmeter-5.6pache-jmeter-5.6in`。
+>
+> 以下为任务完成前的原始步骤记录（保留供参考）。
+
 > 记录于 2026-10-06 深夜。目标：用真实压测数字替换简历中"10 万级曲库检索"的性能声明。
 > 配套文档：`docs/压测指引.md`（完整方法论）、`docs/压测/`（SQL/关键词/JMX 计划/本脚本）。
 
