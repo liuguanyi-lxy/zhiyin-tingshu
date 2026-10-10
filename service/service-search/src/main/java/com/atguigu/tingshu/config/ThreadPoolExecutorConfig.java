@@ -18,12 +18,16 @@ public class ThreadPoolExecutorConfig {
 // 空闲线程存活时间为10秒
 // 使用有界工作队列ArrayBlockingQueue，容量为3
 // 使用默认的线程工厂创建线程
-// 采用AbortPolicy拒绝策略，当线程池和队列都满时，直接抛出异常
+//【修复】拒绝策略由 AbortPolicy 改为 CallerRunsPolicy：
+// AbortPolicy 在池+队列满时直接抛 RejectedExecutionException，任务被丢弃——
+// 详情页聚合（ItemServiceImpl 四路 CompletableFuture）在高并发缓存未命中时会直接 500，
+// 批量上架（batchUpperAlbum）并发灌数时实测拒绝率高达 97%。
+// CallerRunsPolicy 改为"调用线程自己执行"，形成自然背压：不丢任务、只是提交方变慢。
         return new ThreadPoolExecutor(10,
                 15,
                 10, TimeUnit.SECONDS,
                 new ArrayBlockingQueue<>(3),
                 Executors.defaultThreadFactory(),
-                new ThreadPoolExecutor.AbortPolicy());
+                new ThreadPoolExecutor.CallerRunsPolicy());
     }
 }
