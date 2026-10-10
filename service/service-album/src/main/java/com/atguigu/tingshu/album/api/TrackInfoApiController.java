@@ -10,6 +10,7 @@ import com.atguigu.tingshu.query.album.TrackInfoQuery;
 import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
 import com.atguigu.tingshu.vo.album.TrackInfoVo;
 import com.atguigu.tingshu.vo.album.TrackListVo;
+import com.atguigu.tingshu.vo.album.TrackStatVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
@@ -126,6 +127,26 @@ public class TrackInfoApiController {
 	public Result<List<TrackInfo>> findPaidTrackInfoList(@PathVariable Long trackId, @PathVariable Integer trackCount) {
 		List<TrackInfo> trackInfoList = trackInfoService.findPaidTrackInfoList(trackId,trackCount);
 		return Result.ok(trackInfoList);
+	}
+	/**
+	 * 远程调用:根据声音ID列表批量获取声音信息。
+	 *
+	 * <p>供用户服务组装"我的收藏/收听历史"列表使用，一次查询代替逐条调用，避免 N+1。</p>
+	 */
+	@Operation(summary = "根据声音ID列表批量获取声音信息")
+	@PostMapping("findTrackInfoListByIds")
+	public Result<List<TrackInfo>> findTrackInfoListByIds(@RequestBody List<Long> trackIds) {
+		return Result.ok(trackInfoService.findTrackInfoListByIds(trackIds));
+	}
+	/**
+	 * 前端展示:根据声音ID获取四个统计数据（播放/收藏/点赞/评论数）。
+	 *
+	 * <p>播放页展示用，匿名可访问（已在网关白名单）。</p>
+	 */
+	@Operation(summary = "根据声音ID获取四个统计数据")
+	@GetMapping("getTrackStatVo/{trackId}")
+	public Result<TrackStatVo> getTrackStatVo(@PathVariable Long trackId) {
+		return Result.ok(trackInfoService.getTrackStatVo(trackId));
 	}
 }
 

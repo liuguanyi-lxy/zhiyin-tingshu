@@ -27,6 +27,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -102,6 +103,8 @@ class CommentServiceImplTest {
         assertTrue(msgCaptor.getValue().contains("0404"));
         assertTrue(msgCaptor.getValue().contains("businessNo"));
         assertTrue(msgCaptor.getValue().contains("\"count\":1"));
+        // 专辑级评论(trackId=0)不应触发声音维度统计（0704）
+        verify(rabbitService, never()).sendMessage(eq(MqConst.EXCHANGE_TRACK), anyString(), anyString());
     }
 
     @Test
@@ -223,5 +226,81 @@ class CommentServiceImplTest {
         vo.setNickname(nickname);
         vo.setAvatarUrl(avatarUrl);
         return vo;
+    }
+
+    @Test
+    void findCommentPage_marksDeleteMarkForOwnCommentsOnly() {
+        when(mongoTemplate.count(any(Query.class), eq(Comment.class))).thenReturn(1L);
+        Comment top = savedComment("c1", 8L, "0");
+        Comment reply = savedComment("r1", 9L, "c1");
+        when(mongoTemplate.find(any(Query.class), eq(Comment.class)))
+                .thenReturn(List.of(top))
+                .thenReturn(List.of(reply))
+                .thenReturn(List.of());
+        when(mongoTemplate.find(any(Query.class), eq(CommentPraise.class))).thenReturn(List.of());
+
+        Page<Comment> result = service.findCommentPage(1L, 0L, 8L, 1, 10);
+
+        // 自己发的顶层评论可删（deleteMark=1），别人发的回复不可删（0）
+        assertEquals("1", result.getRecords().get(0).getDeleteMark());
+        assertEquals("0", result.getRecords().get(0).getReplyCommentList().get(0).getDeleteMark());
+    }
+
+    @Test
+    void findCommentPage_showsReplyToReplyWithParent() {
+        when(mongoTemplate.count(any(Query.class), eq(Comment.class))).thenReturn(1L);
+        Comment top = savedComment("c1", 8L, "0");
+        Comment reply1 = savedComment("r1", 9L, "c1");
+        Comment reply2 = savedComment("r2", 10L, "r1");
+        when(mongoTemplate.find(any(Query.class), eq(Comment.class)))
+                .thenReturn(List.of(top))
+                .thenReturn(List.of(reply1))
+                .thenReturn(List.of(reply2))
+                .thenReturn(List.of());
+
+        Page<Comment> result = service.findCommentPage(1L, 0L, null, 1, 10);
+
+        List<Comment> replies = result.getRecords().get(0).getReplyCommentList();
+        // "回复的回复"不再丢失：两级回复都挂到顶层评论下
+        assertEquals(2, replies.size());
+        // 直接回复无 parent；回复的回复填充 parent 指向被回复的回复
+        assertNull(replies.get(0).getParent());
+        assertNotNull(replies.get(1).getParent());
+        assertEquals("r1", replies.get(1).getParent().getId());
+    }
+
+    @Test
+    void saveTrackTopComment_sendsAlbumAndTrackStatMessages() {
+        when(userInfoFeignClient.getUserInfoVo(8L)).thenReturn(Result.ok(userInfoVo("龙星宇", "http://a.png")));
+        when(mongoTemplate.save(any(Comment.class))).thenAnswer(inv -> inv.getArgument(0));
+        CommentVo vo = commentVo("说得好");
+        vo.setTrackId(5L);
+
+        service.saveComment(8L, vo);
+
+        // 声音级顶层评论：专辑 0404 + 声音 0704 各发一条
+        ArgumentCaptor<String> msgCaptor = ArgumentCaptor.forClass(String.class);
+        verify(rabbitService).sendMessage(eq(MqConst.EXCHANGE_ALBUM), eq(MqConst.ROUTING_ALBUM_STAT_UPDATE), msgCaptor.capture());
+        verify(rabbitService).sendMessage(eq(MqConst.EXCHANGE_TRACK), eq(MqConst.ROUTING_TRACK_STAT_UPDATE), msgCaptor.capture());
+        List<String> all = msgCaptor.getAllValues();
+        assertTrue(all.get(0).contains("0404"));
+        assertTrue(all.get(1).contains("0704"));
+        assertTrue(all.get(1).contains("\"trackId\":5"));
+        assertTrue(all.get(1).contains("\"count\":1"));
+    }
+
+    @Test
+    void removeTrackTopComment_sendsTrackStatDecrement() {
+        Comment comment = savedComment("c1", 8L, "0");
+        comment.setTrackId(5L);
+        when(mongoTemplate.findById("c1", Comment.class)).thenReturn(comment);
+        when(mongoTemplate.find(any(Query.class), eq(Comment.class))).thenReturn(List.of());
+
+        service.removeComment(8L, 1L, "c1");
+
+        ArgumentCaptor<String> msgCaptor = ArgumentCaptor.forClass(String.class);
+        verify(rabbitService).sendMessage(eq(MqConst.EXCHANGE_TRACK), eq(MqConst.ROUTING_TRACK_STAT_UPDATE), msgCaptor.capture());
+        assertTrue(msgCaptor.getValue().contains("0704"));
+        assertTrue(msgCaptor.getValue().contains("\"count\":-1"));
     }
 }

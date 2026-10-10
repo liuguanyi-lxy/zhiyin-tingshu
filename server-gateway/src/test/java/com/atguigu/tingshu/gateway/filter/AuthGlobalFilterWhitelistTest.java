@@ -72,4 +72,22 @@ class AuthGlobalFilterWhitelistTest {
         assertFalse(whitelisted("/api/comment/praise/1/abc"));
         assertFalse(whitelisted("/api/comment/remove/1/abc"));
     }
+
+    @Test
+    void subscribeCollectQuery_whitelistedButToggleAndListsRequireLogin() {
+        // 详情页/播放页匿名也能查询订阅/收藏状态（后端未登录一律返回 false）
+        assertTrue(whitelisted("/api/user/userInfo/isSubscribe/123"));
+        assertTrue(whitelisted("/api/user/userInfo/isCollect/456"));
+        // 切换订阅/收藏、订阅/收藏分页列表必须登录
+        assertFalse(whitelisted("/api/user/userInfo/subscribe/123"));
+        assertFalse(whitelisted("/api/user/userInfo/collect/456"));
+        assertFalse(whitelisted("/api/user/userInfo/findUserSubscribePage/1/10"));
+        assertFalse(whitelisted("/api/user/userInfo/findUserCollectPage/1/10"));
+    }
+
+    @Test
+    void trackStatVo_isWhitelistedForAnonymousPlayer() {
+        // 播放页匿名可看声音统计数据（评论/收藏/播放数来源）
+        assertTrue(whitelisted("/api/album/trackInfo/getTrackStatVo/123"));
+    }
 }

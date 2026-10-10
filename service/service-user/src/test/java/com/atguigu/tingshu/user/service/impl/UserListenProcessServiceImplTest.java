@@ -1,9 +1,17 @@
 package com.atguigu.tingshu.user.service.impl;
 
+import com.atguigu.tingshu.album.client.AlbumInfoFeignClient;
+import com.atguigu.tingshu.album.client.TrackInfoFeignClient;
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
 import com.atguigu.tingshu.common.rabbit.service.RabbitService;
+import com.atguigu.tingshu.common.result.Result;
+import com.atguigu.tingshu.model.album.AlbumInfo;
+import com.atguigu.tingshu.model.album.TrackInfo;
 import com.atguigu.tingshu.model.user.UserListenProcess;
+import com.atguigu.tingshu.vo.user.UserListenProcessListVo;
 import com.atguigu.tingshu.vo.user.UserListenProcessVo;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import org.bson.Document;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -11,16 +19,21 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -46,6 +59,10 @@ class UserListenProcessServiceImplTest {
     private ValueOperations valueOperations;
     @Mock
     private RabbitService rabbitService;
+    @Mock
+    private TrackInfoFeignClient trackInfoFeignClient;
+    @Mock
+    private AlbumInfoFeignClient albumInfoFeignClient;
     @InjectMocks
     private UserListenProcessServiceImpl service;
 
@@ -133,5 +150,70 @@ class UserListenProcessServiceImplTest {
         assertTrue(message.contains("\"albumId\":66"));
         assertTrue(message.contains("\"statType\":\"0701\""));
         assertTrue(message.contains("\"count\":1"));
+    }
+
+    @Test
+    void findUserPage_assemblesVoWithPlayRateAndCoverFallback() {
+        UserListenProcess process = new UserListenProcess();
+        process.setId("mongo-id-1");
+        process.setUserId(9L);
+        process.setAlbumId(66L);
+        process.setTrackId(1L);
+        process.setBreakSecond(new BigDecimal("25.5"));
+        when(mongoTemplate.count(any(), eq(UserListenProcess.class), eq(COLLECTION))).thenReturn(1L);
+        when(mongoTemplate.find(any(), eq(UserListenProcess.class), eq(COLLECTION))).thenReturn(List.of(process));
+
+        TrackInfo trackInfo = new TrackInfo();
+        trackInfo.setId(1L);
+        trackInfo.setAlbumId(66L);
+        trackInfo.setTrackTitle("第1集");
+        trackInfo.setCoverUrl(null);
+        trackInfo.setMediaDuration(51.0F);
+        when(trackInfoFeignClient.findTrackInfoListByIds(anyList())).thenReturn(Result.ok(List.of(trackInfo)));
+
+        AlbumInfo albumInfo = new AlbumInfo();
+        albumInfo.setId(66L);
+        albumInfo.setAlbumTitle("专辑A");
+        albumInfo.setCoverUrl("http://album-cover");
+        when(albumInfoFeignClient.findAlbumInfoList(anyList())).thenReturn(Result.ok(List.of(albumInfo)));
+
+        IPage<UserListenProcessListVo> page = service.findUserPage(1L, 10L, 9L);
+
+        assertEquals(1L, page.getTotal());
+        UserListenProcessListVo vo = page.getRecords().get(0);
+        assertEquals("mongo-id-1", vo.getId());
+        assertEquals(1L, vo.getTrackId());
+        assertEquals("第1集", vo.getTrackTitle());
+        assertEquals("专辑A", vo.getAlbumTitle());
+        // 声音无独立封面时回退使用专辑封面
+        assertEquals("http://album-cover", vo.getCoverUrl());
+        assertEquals(0, new BigDecimal("51.0").compareTo(vo.getMediaDuration()));
+        // 25.5/51 ≈ 50%
+        assertEquals("50%", vo.getPlayRate());
+    }
+
+    @Test
+    void deleteListenProcess_softDeletesWithUserGuard() {
+        service.deleteListenProcess(9L, "mongo-id-1");
+
+        ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+        ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.forClass(Update.class);
+        verify(mongoTemplate).updateFirst(queryCaptor.capture(), updateCaptor.capture(), eq(UserListenProcess.class), eq(COLLECTION));
+        // 查询同时限定文档id与用户id，防止越权删除他人记录
+        assertEquals("mongo-id-1", queryCaptor.getValue().getQueryObject().get("_id"));
+        assertEquals(9L, queryCaptor.getValue().getQueryObject().get("userId"));
+        // 软删除：$set isShow=0，保留断点数据
+        assertEquals(0, ((Document) updateCaptor.getValue().getUpdateObject().get("$set")).get("isShow"));
+    }
+
+    @Test
+    void getLatelyTrack_missing_returnsEmptyObjectNotNull() {
+        when(mongoTemplate.findOne(any(), eq(UserListenProcess.class), eq(COLLECTION))).thenReturn(null);
+
+        UserListenProcess latest = service.getLatelyTrack(9L);
+
+        // 返回空对象而不是 null，避免前端从 null 解构字段报错
+        assertNotNull(latest);
+        assertNull(latest.getTrackId());
     }
 }

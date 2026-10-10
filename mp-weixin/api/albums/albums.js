@@ -154,6 +154,15 @@ class CateGory extends utils_request.Service {
     });
   }
   /**
+   * @description 获取专辑统计数据（播放/订阅/购买/评论数）
+   * @param albumId
+   */
+  getAlbumInfoStat(albumId) {
+    return this.get({
+      url: `/api/album/albumInfo/getAlbumInfoStat/${albumId}`
+    });
+  }
+  /**
    * @description 获取订阅专辑分页列表
    * @param  { page: number, limit: number } pageInfo 分页信息
    */

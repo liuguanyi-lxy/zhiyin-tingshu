@@ -20,4 +20,9 @@ public class TrackInfoDegradeFeignClient implements TrackInfoFeignClient {
     public Result getTrackInfo(Long trackId) {
         return Result.fail();
     }
+
+    @Override
+    public Result<List<TrackInfo>> findTrackInfoListByIds(List<Long> trackIds) {
+        return Result.fail();
+    }
 }

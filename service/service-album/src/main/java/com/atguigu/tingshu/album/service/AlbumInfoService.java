@@ -37,4 +37,7 @@ public interface AlbumInfoService extends IService<AlbumInfo> {
 
     //【压测基线】LIKE 模糊查询，用于与 ES 检索做性能对照（见 docs/压测指引.md）
     java.util.List<java.util.Map<String, Object>> likeBenchmark(String keyword);
+
+    //根据专辑ID列表批量查询专辑信息（供订阅列表等场景组装数据，避免逐条 Feign 的 N+1）
+    List<AlbumInfo> findAlbumInfoList(List<Long> albumIds);
 }

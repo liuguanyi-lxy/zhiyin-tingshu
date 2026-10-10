@@ -61,6 +61,10 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
           });
           zPagingRef.value.complete(res.data.records);
           console.log(res);
+        } else {
+          // trackId 尚未就绪（无参进播放页走"上次听到"异步分支）：先以空列表结束本次查询，
+          // 待 trackId 就绪后 z-paging 会随重新挂载自动再查一次
+          zPagingRef.value && zPagingRef.value.complete([]);
         }
       } catch (error) {
         console.log(error);
@@ -208,12 +212,12 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         }),
         f: common_vendor.o(getComment),
         g: common_vendor.o(($event) => commentList.value = $event),
-        h: common_vendor.p({
+        h: props.trackId > 0 ? common_vendor.p({
           ["default-page-size"]: 30,
           ["show-refresher-update-time"]: true,
           ["auto-show-back-to-top"]: true,
           modelValue: commentList.value
-        })
+        }) : undefined
       };
     };
   }

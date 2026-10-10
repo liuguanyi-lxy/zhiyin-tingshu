@@ -145,5 +145,15 @@ public class AlbumInfoApiController {
 		List<AlbumAttributeValue> albumAttributeValueList = albumInfoService.findAlbumAttributeValueByAlbumId(albumId);
 		return Result.ok(albumAttributeValueList);
 	}
+	/**
+	 * 远程调用:根据专辑ID列表批量获取专辑信息。
+	 *
+	 * <p>供用户服务组装"我的订阅/收听历史"列表使用，一次查询代替逐条调用，避免 N+1。</p>
+	 */
+	@Operation(summary = "根据专辑ID列表批量获取专辑信息")
+	@PostMapping("findAlbumInfoList")
+	public Result<List<AlbumInfo>> findAlbumInfoList(@RequestBody List<Long> albumIds) {
+		return Result.ok(albumInfoService.findAlbumInfoList(albumIds));
+	}
 }
 

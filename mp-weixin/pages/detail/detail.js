@@ -198,9 +198,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         url: "/pages/index/index"
       });
     };
-    const getIsSubscribe = () => {
+    const getIsSubscribe = async () => {
       console.log(1);
-      const res = api_albums_albums.albumsService.isSubscribeAlbum(props.id);
+      const res = await api_albums_albums.albumsService.isSubscribeAlbum(props.id);
       isSubscribe.value = res.data;
     };
     common_vendor.onLoad(() => {

@@ -183,7 +183,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             c: common_vendor.p({
               data: item,
               deleteItemHandler: deleteItem,
-              handleCancel: (id) => common_vendor.unref(api_albums_albums.albumsService).isSubscribeAlbum(id),
+              handleCancel: (id) => common_vendor.unref(api_albums_albums.albumsService).subscribeAlbum(id),
               popSetting: pageData[pageData.currentPageNav].popSetting,
               jumpRoute: pageData[pageData.currentPageNav].jumpRoute
             })
@@ -199,7 +199,7 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
             c: common_vendor.p({
               data: item,
               deleteItemHandler: deleteItem,
-              handleCancel: (id) => common_vendor.unref(api_albums_albums.albumsService).isCollectTrack(id),
+              handleCancel: (id) => common_vendor.unref(api_albums_albums.albumsService).collectTrack(id),
               popSetting: pageData[pageData.currentPageNav].popSetting,
               mode: "collect",
               jumpRoute: pageData[pageData.currentPageNav].jumpRoute

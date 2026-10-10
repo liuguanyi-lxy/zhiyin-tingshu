@@ -3,8 +3,11 @@ package com.atguigu.tingshu.user.api;
 import com.atguigu.tingshu.common.login.LoginVerification;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
+import com.atguigu.tingshu.model.user.UserListenProcess;
 import com.atguigu.tingshu.user.service.UserListenProcessService;
+import com.atguigu.tingshu.vo.user.UserListenProcessListVo;
 import com.atguigu.tingshu.vo.user.UserListenProcessVo;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +49,39 @@ public class UserListenProcessApiController {
 		BigDecimal trackBreakSecond = userListenProcessService.getTrackBreakSecond(userId, trackId);
 		// 返回数据
 		return Result.ok(trackBreakSecond);
+	}
+
+	/**
+	 * 分页查询"我的收听历史"，供前端"我的"页历史 Tab 使用。
+	 */
+	@LoginVerification
+	@Operation(summary = "分页查询我的收听历史")
+	@GetMapping("/findUserPage/{page}/{limit}")
+	public Result<IPage<UserListenProcessListVo>> findUserPage(@PathVariable Long page, @PathVariable Long limit) {
+		Long userId = AuthContextHolder.getUserId();
+		return Result.ok(userListenProcessService.findUserPage(page, limit, userId));
+	}
+
+	/**
+	 * 删除指定收听历史（软删除 isShow=0），前端历史列表的删除按钮调用。
+	 */
+	@LoginVerification
+	@Operation(summary = "删除指定收听历史")
+	@DeleteMapping("/delete/{id}")
+	public Result delete(@PathVariable String id) {
+		userListenProcessService.deleteListenProcess(AuthContextHolder.getUserId(), id);
+		return Result.ok();
+	}
+
+	/**
+	 * 最近一次收听记录，供播放页不带参数进入时自动续播"上次听到"。
+	 */
+	@LoginVerification
+	@Operation(summary = "获取最近一次收听记录")
+	@GetMapping("/getLatelyTrack")
+	public Result<UserListenProcess> getLatelyTrack() {
+		Long userId = AuthContextHolder.getUserId();
+		return Result.ok(userListenProcessService.getLatelyTrack(userId));
 	}
 }
 

@@ -62,12 +62,17 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/album/albumInfo/getAlbumInfo/**",
             "/api/album/albumInfo/getAlbumInfoStat/**",
             "/api/album/albumInfo/findAlbumAttributeValue/**",
+            // 声音统计数据（播放/收藏/点赞/评论数，播放页展示；匿名可看）
+            "/api/album/trackInfo/getTrackStatVo/**",
             // 声音分页列表（可登录可不登录）
             "/api/album/trackInfo/findAlbumTrackPage/**",
             // 评论浏览（可登录可不登录；发布/点赞/删除仍需登录，不在白名单）
             "/api/comment/findCommentPage/**",
             // 判断当前用户是否购买过声音（可登录可不登录）
             "/api/user/userInfo/userIsPaidTrack/**",
+            // 是否已订阅专辑/已收藏声音（专辑详情页、播放页可匿名访问；未登录返回 false，避免匿名访问被拦截弹"登录过期"）
+            "/api/user/userInfo/isSubscribe/**",
+            "/api/user/userInfo/isCollect/**",
             // VIP 配置查询——【修复#4】由 /** 收紧为精确路径，避免将来新增管理端点被连带放行
             "/api/user/vipServiceConfig/findAll",
             // 充值单查询

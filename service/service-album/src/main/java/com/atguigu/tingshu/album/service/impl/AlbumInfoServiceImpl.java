@@ -258,4 +258,13 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 	public java.util.List<java.util.Map<String, Object>> likeBenchmark(String keyword) {
 		return albumInfoMapper.selectLikeBenchmark(keyword);
 	}
+
+	//根据专辑ID列表批量查询专辑信息（供订阅列表等场景组装数据，避免逐条 Feign 的 N+1）
+	@Override
+	public List<AlbumInfo> findAlbumInfoList(List<Long> albumIds) {
+		if (CollectionUtils.isEmpty(albumIds)) {
+			return Collections.emptyList();
+		}
+		return albumInfoMapper.selectList(new LambdaQueryWrapper<AlbumInfo>().in(AlbumInfo::getId, albumIds));
+	}
 }

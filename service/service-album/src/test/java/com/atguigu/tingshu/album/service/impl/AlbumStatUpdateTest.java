@@ -61,25 +61,42 @@ class AlbumStatUpdateTest {
             TrackStatMqVo vo = new TrackStatMqVo();
             vo.setTrackId(5L);
             vo.setAlbumId(1L);
-            vo.setStatType("0401");
+            // 生产端（播放上报）发送的是声音统计类型 0701，专辑侧由服务层映射为 0401
+            vo.setStatType("0701");
             vo.setCount(1);
             return vo;
         }
 
         @Test
-        void trackStatIncr_propagatesToAlbumStat() {
-            when(trackStatMapper.incrTrackStatNum(5L, "0401", 1)).thenReturn(1);
+        void trackStatIncr_propagatesToAlbumStatAsPlay() {
+            when(trackStatMapper.incrTrackStatNum(5L, "0701", 1)).thenReturn(1);
 
             service.updateStat(statVo());
 
+            // 声音播放量(0701)联动专辑播放量(0401)
             verify(albumInfoService).updateStat(1L, "0401", 1);
         }
 
         @Test
         void trackStatMissing_throwsAndSkipsAlbumStat() {
-            when(trackStatMapper.incrTrackStatNum(5L, "0401", 1)).thenReturn(0);
+            when(trackStatMapper.incrTrackStatNum(5L, "0701", 1)).thenReturn(0);
 
             assertThrows(IllegalArgumentException.class, () -> service.updateStat(statVo()));
+
+            verifyNoInteractions(albumInfoService);
+        }
+
+        @Test
+        void collectStat_doesNotPropagateToAlbumStat() {
+            // 收藏统计(0702)只在声音维度累加，专辑维度没有对应统计，不应联动
+            TrackStatMqVo collectVo = new TrackStatMqVo();
+            collectVo.setTrackId(5L);
+            collectVo.setAlbumId(1L);
+            collectVo.setStatType("0702");
+            collectVo.setCount(1);
+            when(trackStatMapper.incrTrackStatNum(5L, "0702", 1)).thenReturn(1);
+
+            service.updateStat(collectVo);
 
             verifyNoInteractions(albumInfoService);
         }

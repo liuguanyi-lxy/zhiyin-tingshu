@@ -46,6 +46,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
     const currentIndex = common_vendor.ref(0);
     const bgAudioManager = common_vendor.index.getBackgroundAudioManager();
     const isCollect = common_vendor.ref(false);
+    const isSubscribe = common_vendor.ref(false);
+    const albumSubscribeNum = common_vendor.ref(0);
     let trackInfo = common_vendor.ref();
     let trackStaVo = common_vendor.ref();
     let album = common_vendor.ref();
@@ -253,6 +255,35 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         icon: "none"
       });
     };
+    const getIsSubscribe = async () => {
+      try {
+        const res = await api_albums_albums.albumsService.isSubscribeAlbum(audios.albumId);
+        isSubscribe.value = res.data;
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    const getAlbumStat = async () => {
+      try {
+        const res = await api_albums_albums.albumsService.getAlbumInfoStat(audios.albumId);
+        albumSubscribeNum.value = res.data && res.data.subscribeStatNum || 0;
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    const handleSubscribe = async () => {
+      try {
+        const res = await api_albums_albums.albumsService.subscribeAlbum(audios.albumId);
+        isSubscribe.value = res.data;
+        albumSubscribeNum.value = Math.max(0, (albumSubscribeNum.value || 0) + (res.data ? 1 : -1));
+        common_vendor.index.showToast({
+          title: res.data ? "订阅成功" : "取消订阅成功",
+          icon: "none"
+        });
+      } catch (error) {
+        console.log(error);
+      }
+    };
     const getTrackInfo = async (trackId) => {
       var _a;
       try {
@@ -310,6 +341,8 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
       getAblumAudioList(1, 10);
       getTrackStatVo();
       getIsCollect();
+      getIsSubscribe();
+      getAlbumStat();
     });
     common_vendor.onMounted(() => {
       var systemInfo = Grace6_js_grace.graceJS.system();
@@ -371,7 +404,9 @@ const _sfc_main = /* @__PURE__ */ common_vendor.defineComponent({
         t: common_vendor.o(nextAudio),
         v: (_d = common_vendor.unref(album)) == null ? void 0 : _d.coverUrl,
         w: common_vendor.t((_e = common_vendor.unref(album)) == null ? void 0 : _e.albumTitle),
-        x: common_vendor.t((_f = common_vendor.unref(trackStaVo)) == null ? void 0 : _f.collectStatNum),
+        x: common_vendor.t(common_vendor.unref(albumSubscribeNum)),
+        u: common_vendor.o(handleSubscribe),
+        L: common_vendor.t(isSubscribe.value ? "已订阅" : "免费订阅"),
         y: common_vendor.unref(scrollHeight) + "px",
         z: common_vendor.o(handleComment),
         A: isCollect.value

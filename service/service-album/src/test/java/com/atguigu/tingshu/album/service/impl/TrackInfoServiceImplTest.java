@@ -489,4 +489,39 @@ class TrackInfoServiceImplTest {
             assertEquals(pageParam, service.findUserTrackPage(pageParam, query));
         }
     }
+
+    @Nested
+    class GetTrackStatVo {
+
+        private TrackStat stat(String statType, int num) {
+            // TrackStat 只有三参构造器（无无参构造）
+            return new TrackStat(100L, statType, num);
+        }
+
+        @Test
+        void mapsFourStatTypesToVoFields() {
+            when(trackStatMapper.selectList(any())).thenReturn(List.of(
+                    stat(SystemConstant.TRACK_STAT_PLAY, 101),
+                    stat(SystemConstant.TRACK_STAT_COLLECT, 202),
+                    stat(SystemConstant.TRACK_STAT_PRAISE, 303),
+                    stat(SystemConstant.TRACK_STAT_COMMENT, 404)));
+
+            com.atguigu.tingshu.vo.album.TrackStatVo vo = service.getTrackStatVo(100L);
+
+            assertEquals(101, vo.getPlayStatNum());
+            assertEquals(202, vo.getCollectStatNum());
+            assertEquals(303, vo.getPraiseStatNum());
+            assertEquals(404, vo.getCommentStatNum());
+        }
+
+        @Test
+        void missingStats_fieldsStayNull() {
+            when(trackStatMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+            com.atguigu.tingshu.vo.album.TrackStatVo vo = service.getTrackStatVo(999L);
+
+            assertEquals(null, vo.getPlayStatNum());
+            assertEquals(null, vo.getCommentStatNum());
+        }
+    }
 }
