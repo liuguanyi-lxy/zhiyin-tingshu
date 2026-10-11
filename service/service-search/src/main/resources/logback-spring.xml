@@ -54,24 +54,18 @@
         <root level="INFO">
 <!-- 配置两个日志输出目标：控制台和Logstash -->
             <appender-ref ref="CONSOLE" />  <!-- 将日志输出到控制台 -->
-            <!-- LOGSTASH 引用移至下方 springProfile name="logstash" 中，按需启用 -->
+            <!-- 日志同时推送 ELK（虚拟机 logstash，与前端接入层同生共死） -->
+            <appender-ref ref="LOGSTASH" />
 <!--            <appender-ref ref="FILE" />-->
         </root>
     </springProfile>
 
 
-    <!-- 【修复#9】Logstash 推送改为按需启用：激活 logstash profile 时才连接
-         （-Dspring.profiles.active=dev,logstash 或 Nacos 中配置），destination 可由
-         logstash.destination 属性覆盖，避免环境不可达时反复报连接失败 -->
+    <!-- 【迁移】Logstash 推送默认开启：ELK 与前端接入层同住虚拟机，前端可用即 ELK 可用；
+         destination 可由 logstash.destination 属性覆盖（指向不可达地址即等价关闭） -->
     <springProperty name="LOGSTASH_DEST" source="logstash.destination" defaultValue="192.168.13.100:5044"/>
-    <springProfile name="logstash">
     <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-        <!-- logstash ip和暴露的端口，logback就是通过这个地址把日志发送给logstash -->
         <destination>${LOGSTASH_DEST}</destination>
         <encoder charset="UTF-8" class="net.logstash.logback.encoder.LogstashEncoder" />
     </appender>
-        <root level="INFO">
-            <appender-ref ref="LOGSTASH" />
-        </root>
-    </springProfile>
 </configuration>

@@ -1,5 +1,8 @@
 package com.atguigu.tingshu.payment.api;
 
+import com.atguigu.tingshu.common.annotation.Log;
+import com.atguigu.tingshu.common.enums.BusinessType;
+import com.atguigu.tingshu.common.enums.OperatorType;
 import com.atguigu.tingshu.common.login.LoginVerification;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
@@ -60,6 +63,7 @@ public class WxPayApiController {
      * 3. 条件更新（未支付→已支付）保证幂等，重复通知直接忽略。
      * 应答约定：成功返回 {"code":"SUCCESS"}，失败返回 HTTP 500 + {"code":"FAIL"}，微信会按策略重试。
      */
+    @Log(title = "微信支付回调", businessType = BusinessType.UPDATE, operatorType = OperatorType.OTHER)
     @Operation(summary = "微信支付回调通知")
     @PostMapping("/notify")
     public ResponseEntity<Map<String, String>> notify(HttpServletRequest request,

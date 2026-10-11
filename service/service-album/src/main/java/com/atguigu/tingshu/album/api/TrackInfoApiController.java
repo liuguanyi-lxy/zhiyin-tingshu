@@ -2,6 +2,9 @@ package com.atguigu.tingshu.album.api;
 
 import com.atguigu.tingshu.album.service.TrackInfoService;
 import com.atguigu.tingshu.album.service.VodService;
+import com.atguigu.tingshu.common.annotation.Log;
+import com.atguigu.tingshu.common.enums.BusinessType;
+import com.atguigu.tingshu.common.enums.OperatorType;
 import com.atguigu.tingshu.common.login.LoginVerification;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
@@ -71,6 +74,7 @@ public class TrackInfoApiController {
 	 * @return
 	 */
 	@LoginVerification
+	@Log(title = "保存声音", businessType = BusinessType.INSERT, operatorType = OperatorType.MOBILE)
 	@Operation(summary = "给指定专辑新增声音")
 	@PostMapping("saveTrackInfo")
 	public Result saveTrackInfo(@RequestBody @Validated TrackInfoVo trackInfoVo) {
@@ -94,6 +98,7 @@ public class TrackInfoApiController {
 	}
 	//删除声音
 	@LoginVerification
+	@Log(title = "删除声音", businessType = BusinessType.DELETE, operatorType = OperatorType.MOBILE)
 	@Operation(summary = "删除指定ID的声音")
 	@DeleteMapping("removeTrackInfo/{id}")
 	public Result removeTrackInfo(@PathVariable Long id) {

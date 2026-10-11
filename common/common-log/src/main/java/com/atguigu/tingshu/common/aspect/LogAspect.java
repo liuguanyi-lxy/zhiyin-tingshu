@@ -1,11 +1,10 @@
 package com.atguigu.tingshu.common.aspect;
 
 import com.alibaba.fastjson.JSON;
-import com.atguigu.tingshu.system.client.SysOperLogFeignClient;
 import com.atguigu.tingshu.common.annotation.Log;
+import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.common.util.IpUtil;
 import com.atguigu.tingshu.model.system.SysOperLog;
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.aspectj.lang.JoinPoint;
@@ -24,20 +23,29 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.Map;
 
 
 /**
- * 操作日志记录处理
+ * 操作日志记录切面。
+ *
+ * <p>拦截标注 {@link Log} 的接口方法，组装操作日志（谁、何时、对什么、做了什么、参数与结果/异常），
+ * 以结构化 JSON 输出到本服务日志流（[OPER_LOG] 前缀），经既有 ELK 链路
+ * （logback → logstash:5044 → Elasticsearch）落库，可按 traceId/userId 检索。</p>
+ *
+ * <p>设计取舍：不再依赖 Feign 调用 system 服务落 MySQL——system 是管理后台服务，
+ * C 端运行环境不常驻，Feign 降级即丢日志；复用全服务既有的日志采集链路后，
+ * 操作日志的"存储与检索"零新增组件。</p>
  */
 @Aspect
 @Component
 public class LogAspect {
+    //
     private static final Logger log = LoggerFactory.getLogger(LogAspect.class);
 
-    //微服务切换为feign调用接口
-    @Resource
-    private SysOperLogFeignClient sysOperLogFeignClient;
+    /** ELK 检索锚点：Kibana/ES 中按该前缀过滤即得全量操作日志 */
+    public static final String OPER_LOG_MARKER = "[OPER_LOG]";
 
     /**
      * 处理完请求后执行
@@ -66,11 +74,11 @@ public class LogAspect {
             ServletRequestAttributes sra = (ServletRequestAttributes) ra;
             HttpServletRequest request = sra.getRequest();
 
-            // *========数据库日志=========*//
+            // *========操作日志组装=========*//
             SysOperLog operLog = new SysOperLog();
             operLog.setStatus(1);
             // 请求的地址
-            String ip = IpUtil.getIpAddress(request);//IpUtil.getIpAddr(ServletUtils.getRequest());
+            String ip = IpUtil.getIpAddress(request);
             operLog.setOperIp(ip);
             operLog.setOperUrl(request.getRequestURI());
 
@@ -84,16 +92,17 @@ public class LogAspect {
             operLog.setMethod(className + "." + methodName + "()");
             // 设置请求方式
             operLog.setRequestMethod(request.getMethod());
+            // 设置操作人：C 端登录用户 id（匿名接口为 null，如支付回调）
+            Long userId = AuthContextHolder.getUserId();
+            operLog.setOperName(userId == null ? null : String.valueOf(userId));
+            operLog.setOperTime(new Date());
             // 处理设置注解上的参数
             getControllerMethodDescription(joinPoint, controllerLog, operLog, jsonResult);
-            // 保存数据库
-            sysOperLogFeignClient.saveSysLog(operLog);
-            log.info("操作日志："+JSON.toJSONString(operLog));
+            // 结构化输出：经本服务 logback → logstash → ES 链路落库检索
+            log.info("{}{}", OPER_LOG_MARKER, JSON.toJSONString(operLog));
         } catch (Exception exp) {
-            // 记录本地异常日志
-            log.error("==前置通知异常==");
-            log.error("异常信息:{}", exp.getMessage());
-            exp.printStackTrace();
+            // 切面自身异常不得影响业务方法返回
+            log.error("操作日志组装失败", exp);
         }
     }
 
