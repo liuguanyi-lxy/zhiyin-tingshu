@@ -24,3 +24,29 @@ hs_err_pid*
 
 # Local diagnostics
 docs/_diag.py
+
+# Maven 构建产物
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IntelliJ IDEA / Eclipse / VS Code
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.vscode/
+
+# 本地环境变量
+.env
+.env.*
+
+# Nacos 配置备份：含数据库密码、微信 appSecret 等真实凭据，禁止提交
+资料/
+
+# 微信支付商户证书与私钥
+**/apiclient_key.pem
+**/apiclient_cert.pem
+**/apiclient_cert.p12
