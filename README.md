@@ -15,7 +15,7 @@
 
 | 端 | 能力 |
 |---|---|
-| C 端用户 | 微信登录、专辑/声音浏览与收听、搜索、分类、排行榜、VIP 开通、余额购买、订单、收听进度 |
+| C 端用户 | 微信登录、专辑/声音浏览与收听、搜索、分类、排行榜、VIP 开通、余额购买、订单、收藏、订阅、收听进度 |
 | 创作者 | 专辑 / 声音的创建、上传、编辑、上/下架 |
 | 平台 | 支付回调对账、订单取消、专辑统计（播放量）、内容索引（ES）、数据一致性保障 |
 
@@ -36,6 +36,7 @@
 | 中间件 | Seata（分布式事务）· Sentinel（流控）· XXL-JOB（定时任务）· Canal（MySQL binlog 同步） |
 | API 文档 | Knife4j 4.1.0 |
 | 前端 | uni-app · Pinia · Grace6（微信小程序） |
+| 测试 | JUnit 5 · Mockito · Spring Boot Test |
 
 ## 系统架构
 
@@ -121,6 +122,33 @@ tingshu-parent
 - **Seata** 保障跨服务写操作的事务边界
 - **RabbitMQ 手动 ack + Redis 重试保障** 的可靠消息投递，Feign 下游消费保证幂等
 - **XXL-JOB** 定时任务（专辑排行榜更新、VIP 到期状态刷新）
+
+## 质量保障
+
+### 单元测试
+
+全工程 **35 个测试类**，覆盖 **13 个模块**，技术栈 JUnit 5 + Mockito，重点验证并发安全与边界条件而非简单 CRUD：
+
+| 测试域 | 测试类 | 验证内容 |
+|---|---|---|
+| **资金安全** | `AccountDeductBoundaryTest`<br>`AccountDeductSecurityTest`<br>`AccountDeductSqlTest`<br>`AccountDeductFeignTest` | 余额扣减的边界值、越权调用拦截、原子 SQL 条件更新、Feign 内部鉴权 |
+| **网关鉴权** | `AuthGlobalFilterWhitelistTest`<br>`TraceFilterTest` | 白名单放行、非白名单无 token 拦截、traceId 全链路透传 |
+| **缓存一致性** | `AlbumInfoServiceImplTest`<br>`AlbumStatUpdateTest` | 缓存回写与空值防穿透、专辑统计更新 |
+| **订单 / 支付** | `OrderInfoServiceImplTest`<br>`PaymentInfoServiceImplTest`<br>`SignHelperTest` | 下单流程、支付回调处理、签名计算 |
+| **策略模式** | `StrategyContextTest`<br>`AlbumItemTypeStrategyImplTest`<br>`TrackItemTypeStrategyImplTest`<br>`VipItemTypeStrategyImplTest` | 商品类型策略路由与各实现分支 |
+| **用户行为** | `UserCollectServiceImplTest`<br>`UserSubscribeServiceImplTest`<br>`UserListenProcessServiceImplTest` | 收藏去重、订阅状态流转、收听进度上报 |
+| **可靠消息** | `RabbitServiceTest`<br>`RabbitInitConfigApplicationListenerTest` | 消息发送与重试保障、队列初始化 |
+| **工具层** | `SensitiveWordFilterUtilTest`<br>`RandomUtilTest`<br>`AuthContextHolderTest`<br>`TraceContextUtilTest`<br>`MongoUtilTest`<br>`ExceptionUtilTest`<br>`LogAspectTest` | 敏感词过滤、用户上下文、traceId 传递、日志切面 |
+
+运行方式：
+
+```bash
+# 全量
+mvn test
+
+# 指定模块
+mvn test -pl service/service-account
+```
 
 ## 快速开始
 
