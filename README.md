@@ -39,6 +39,10 @@
 
 ## 系统架构
 
+![知音听书运行时架构](docs/images/architecture.png)
+
+文字版（便于复制）：
+
 ```
                      ┌────────────────────┐
    微信小程序  ──────▶│  server-gateway      │   Spring Cloud Gateway（8500）
