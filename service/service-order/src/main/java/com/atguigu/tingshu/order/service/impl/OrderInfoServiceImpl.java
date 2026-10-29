@@ -30,6 +30,7 @@ import com.atguigu.tingshu.vo.order.TradeVo;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -80,16 +81,20 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     //根据订单编号修改订单状态（已经支付），远程调用添加用户购买记录
     @Override
     public void updateOrderSuccess(String orderNo) {
-        //根据订单编号修改订单状态（已经支付）
-        //根据订单编号查询订单对象
+        //根据订单编号查询订单对象（用于发放权益）
         OrderInfo orderInfo = this.getOrderInfoByOrderNo(orderNo);
-        //订单状态是未支付修改
-        if (orderInfo.getOrderStatus().equals(SystemConstant.ORDER_STATUS_UNPAID)) {
-            //订单对象设置订单状态值为已支付
-            //SystemConstant.ORDER_STATUS_PAID
-            orderInfo.setOrderStatus(SystemConstant.ORDER_STATUS_PAID);
-            //调用方法进行修改
-            orderInfoMapper.updateById(orderInfo);
+        Assert.notNull(orderInfo, "订单不存在: " + orderNo);
+
+        //【修复#5】条件更新实现幂等：仅"未支付→已支付"更新成功（受影响行数>0）才发放权益。
+        // 原实现"先查状态再 updateById"是 check-then-act，并发回调/重复 MQ 消息会重复发放
+        // 购买记录，VIP 记录重复发放还会叠加续期时长。
+        int rows = orderInfoMapper.update(null, new LambdaUpdateWrapper<OrderInfo>()
+                .eq(OrderInfo::getOrderNo, orderNo)
+                .eq(OrderInfo::getOrderStatus, SystemConstant.ORDER_STATUS_UNPAID)
+                .set(OrderInfo::getOrderStatus, SystemConstant.ORDER_STATUS_PAID));
+        if (rows == 0) {
+            log.info("[订单支付成功] 订单已处理，忽略重复消息: {}", orderNo);
+            return;
         }
 
         //远程调用添加用户购买记录
@@ -144,6 +149,10 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
         map.put("payWay", SystemConstant.ORDER_PAY_WAY_WEIXIN);
         //使用SignHelper工具类对map进行校验,有问题则会抛出异常
         SignHelper.checkSign(map);
+        //【修复#6】参与验签的 payWay 与实际下单使用的 payWay 必须同源：
+        // 原实现只覆盖了 map，而下方分支读取的是 orderInfoVo.getPayWay() 原值——
+        // 签名对 payWay 字段实际失效，前端可提交任意 payWay 且验签照样通过。校验通过后同步覆盖 VO。
+        orderInfoVo.setPayWay(SystemConstant.ORDER_PAY_WAY_WEIXIN);
         //2.判断订单信息是否被重复提交
         //获取传入的tradeNo
         String tradeNo = orderInfoVo.getTradeNo();
@@ -190,8 +199,11 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
             accountLockVo.setContent(orderInfoVo.getOrderDetailVoList().get(0).getItemName());
             //远程调用account微服务接口,根据返回结果的状态码判断是否余额充足,不充足则抛出异常,并且对账户数据库的相关数据进行添加修改
             Result result = userAccountFeignClient.checkAndDeduct(accountLockVo);
-            if(result.getCode().equals(ResultCodeEnum.ACCOUNT_LESS.getCode())){
-                throw new GuiguException(ResultCodeEnum.ACCOUNT_LESS);
+            if (result == null || !ResultCodeEnum.SUCCESS.getCode().equals(result.getCode())) {
+                if (result != null && ResultCodeEnum.ACCOUNT_LESS.getCode().equals(result.getCode())) {
+                    throw new GuiguException(ResultCodeEnum.ACCOUNT_LESS);
+                }
+                throw new GuiguException(ResultCodeEnum.SERVICE_ERROR);
             }
 
             //2.检查和扣减余额成功后生成订单，在order微服务中对order数据库添加对应的记录，订单表、订单详情表、订单减免表

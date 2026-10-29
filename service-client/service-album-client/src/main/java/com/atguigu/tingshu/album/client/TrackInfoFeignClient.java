@@ -6,6 +6,8 @@ import com.atguigu.tingshu.model.album.TrackInfo;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
@@ -27,4 +29,8 @@ public interface TrackInfoFeignClient {
      */
     @GetMapping("api/album/trackInfo/getTrackInfo/{trackId}")
     public Result getTrackInfo(@PathVariable("trackId") Long trackId);
+
+    //根据声音ID列表批量获取声音信息（供用户服务组装收藏/历史列表等场景，避免 N+1）
+    @PostMapping("api/album/trackInfo/findTrackInfoListByIds")
+    public Result<List<TrackInfo>> findTrackInfoListByIds(@RequestBody List<Long> trackIds);
 }

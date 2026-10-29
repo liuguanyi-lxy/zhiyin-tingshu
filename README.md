@@ -1,4 +1,4 @@
-# 知音听书 —— 分布式听书平台
+# 知音听书 —— 分布式听书平台（微信小程序）
 
 > 前后端分离的听书类微服务项目。后端基于 Spring Cloud Alibaba 微服务架构，前端为 uni-app 微信小程序。
 
@@ -38,10 +38,6 @@
 | 前端 | uni-app · Pinia · Grace6（微信小程序） |
 
 ## 系统架构
-
-![知音听书运行时架构](docs/images/architecture.png)
-
-文字版（便于复制）：
 
 ```
                      ┌────────────────────┐
@@ -84,6 +80,7 @@
 
 ```
 tingshu-parent
+├── mp-weixin               # 前端微信小程序（uni-app 编译产物，微信开发者工具直接打开本目录）
 ├── common                  # 通用模块
 │   ├── common-util         # Result 统一响应、ResultCodeEnum、AuthContextHolder、traceId 工具等
 │   ├── common-log          # @Log 操作日志注解 + AOP
@@ -163,5 +160,5 @@ mvn -pl server-gateway spring-boot:run
 
 ## 其它
 
-- 前端工程为 uni-app 微信小程序，独立维护；微信开发者工具打开 `前端代码/mp-weixin/mp-weixin` 目录运行
+- 前端小程序位于本仓库 `mp-weixin/` 目录（uni-app 编译产物，源码已遗失）；微信开发者工具直接打开 `mp-weixin` 目录运行
 - 项目说明与架构约定见根目录 `CLAUDE.md`

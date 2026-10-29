@@ -162,7 +162,7 @@ public class SensitiveWordFilterUtil {
                 break;
             }
         }
-        if(matchFlag < 2 || !flag){        //长度必须大于等于1，为词
+        if(matchFlag < 1 || !flag){        //【修复】原为 matchFlag < 2，导致单字敏感词永远无法命中（注释本意是长度≥1，off-by-one）
             matchFlag = 0;
         }
         return matchFlag;

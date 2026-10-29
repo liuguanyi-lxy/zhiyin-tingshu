@@ -1,7 +1,10 @@
 package com.atguigu.tingshu.album.api;
 
 import com.atguigu.tingshu.album.service.AlbumInfoService;
+import com.atguigu.tingshu.common.annotation.Log;
 import com.atguigu.tingshu.common.constant.RedisConstant;
+import com.atguigu.tingshu.common.enums.BusinessType;
+import com.atguigu.tingshu.common.enums.OperatorType;
 import com.atguigu.tingshu.common.execption.GuiguException;
 import com.atguigu.tingshu.common.login.LoginVerification;
 import com.atguigu.tingshu.common.result.Result;
@@ -47,6 +50,7 @@ public class AlbumInfoApiController {
     private RedissonClient redissonClient;
 	/** 保存创作者提交的专辑基本信息和标签信息。 */
 	@LoginVerification
+	@Log(title = "保存专辑", businessType = BusinessType.INSERT, operatorType = OperatorType.MOBILE)
 	@Operation(summary = "保存专辑")
 	@PostMapping("saveAlbumInfo")
 	public Result saveAlbumInfo(@RequestBody @Validated AlbumInfoVo albumInfoVo) {
@@ -69,12 +73,24 @@ public class AlbumInfoApiController {
 	}
 	/** 删除当前用户拥有的专辑。权限和关联数据处理在 Service 层完成。 */
 	@LoginVerification
+	@Log(title = "删除专辑", businessType = BusinessType.DELETE, operatorType = OperatorType.MOBILE)
 	@Operation(summary = "根据专辑ID删除专辑")
 	@DeleteMapping("removeAlbumInfo/{albumId}")
 	public Result removeAlbumInfo(@PathVariable("albumId") String albumId) {
 		albumInfoService.removeAlbumInfo(albumId);
 		return Result.ok();
 	}
+	/**
+	 * 【压测基线】LIKE 模糊查询（%kw% 不走索引），与 ES 检索形成性能对照。
+	 * 配合 docs/压测指引.md 使用；压测时直连本服务 8501 端口（不经网关，隔离对照变量）。
+	 */
+	@LoginVerification(required = false)
+	@Operation(summary = "LIKE 检索性能基线（压测用）")
+	@GetMapping("likeBenchmark/{keyword}")
+	public Result likeBenchmark(@PathVariable String keyword) {
+		return Result.ok(albumInfoService.likeBenchmark(keyword));
+	}
+
 	/**
 	 * 查询专辑详情。
 	 *
@@ -99,6 +115,7 @@ public class AlbumInfoApiController {
 	}
 	/** 修改专辑基本信息、标签，并根据公开状态变化通知搜索服务上下架。 */
 	@LoginVerification
+	@Log(title = "修改专辑", businessType = BusinessType.UPDATE, operatorType = OperatorType.MOBILE)
 	@Operation(summary = "根据专辑ID修改专辑信息,回显给前端的专辑信息被修改后传回给后端进行保存")
 	@PutMapping("updateAlbumInfo/{albumId}")
 	public Result updateAlbumInfo(@PathVariable Long albumId,@RequestBody @Validated AlbumInfoVo albumInfoVo) {
@@ -133,6 +150,16 @@ public class AlbumInfoApiController {
 		// 获取到专辑属性集合
 		List<AlbumAttributeValue> albumAttributeValueList = albumInfoService.findAlbumAttributeValueByAlbumId(albumId);
 		return Result.ok(albumAttributeValueList);
+	}
+	/**
+	 * 远程调用:根据专辑ID列表批量获取专辑信息。
+	 *
+	 * <p>供用户服务组装"我的订阅/收听历史"列表使用，一次查询代替逐条调用，避免 N+1。</p>
+	 */
+	@Operation(summary = "根据专辑ID列表批量获取专辑信息")
+	@PostMapping("findAlbumInfoList")
+	public Result<List<AlbumInfo>> findAlbumInfoList(@RequestBody List<Long> albumIds) {
+		return Result.ok(albumInfoService.findAlbumInfoList(albumIds));
 	}
 }
 

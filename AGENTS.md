@@ -4,7 +4,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## 项目概述
 
-谷粒随享（蛊听月）听书平台后端，Spring Cloud 微服务项目，Maven 多模块聚合工程（`tingshu-parent` 为父 pom）。前端为微信小程序 uni-app，单独维护，不在本仓库内。
+知音听书听书平台后端，Spring Cloud 微服务项目，Maven 多模块聚合工程（`tingshu-parent` 为父 pom）。前端为微信小程序 uni-app（编译产物），位于本仓库 `mp-weixin/` 目录。
 
 ## 技术栈
 

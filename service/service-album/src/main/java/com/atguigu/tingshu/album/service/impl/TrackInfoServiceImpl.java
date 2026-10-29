@@ -226,18 +226,14 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 	//更新专辑和声音的播放量
 	@Override
 	public void updateStat(TrackStatMqVo trackStatMqVo) {
-		LambdaQueryWrapper<TrackStat> wrapper = new LambdaQueryWrapper<>();
-		wrapper.eq(TrackStat::getTrackId,trackStatMqVo.getTrackId());
-		wrapper.eq(TrackStat::getStatType,trackStatMqVo.getStatType());
-		//根据声音ID的统计类型获取对应的数据
-		TrackStat trackStat = trackStatMapper.selectOne(wrapper);
-		Assert.notNull(trackStat,"声音统计信息不存在");
-		//修改声音的播放量的值
-		trackStat.setStatNum(trackStat.getStatNum()+trackStatMqVo.getCount());
-		//更新声音的播放量
-		trackStatMapper.updateById(trackStat);
-		//更新专辑的播放量
-		albumInfoService.updateStat(trackStatMqVo.getAlbumId(),trackStatMqVo.getStatType(),trackStatMqVo.getCount());
+		//【修复#3】同 AlbumInfoServiceImpl.updateStat：原子累加替代"先查后改"，避免并发丢失更新
+		int rows = trackStatMapper.incrTrackStatNum(trackStatMqVo.getTrackId(), trackStatMqVo.getStatType(), trackStatMqVo.getCount());
+		Assert.isTrue(rows > 0, "声音统计信息不存在");
+		//【修复】只有播放统计需要联动专辑播放量：原实现把声音统计类型(0701/0702)原样传给专辑统计，
+		// 专辑表没有该类型导致断言必然失败；且收藏(0702)在专辑维度没有对应统计，不应联动。
+		if (SystemConstant.TRACK_STAT_PLAY.equals(trackStatMqVo.getStatType())) {
+			albumInfoService.updateStat(trackStatMqVo.getAlbumId(), SystemConstant.ALBUM_STAT_PLAY, trackStatMqVo.getCount());
+		}
 	}
 
 	//根据用户ID、专辑ID、分页数据查询专辑对应声音列表，并且根据用户ID查询用户信息来决定声音是否对该用户显示收费
@@ -309,8 +305,10 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 					Map<Long, Integer> TrackPaidMap = mapResult.getData();
 					Assert.notNull(TrackPaidMap,"用户是否购买专辑或者声音信息不存在");
 					//遍历albumTrackListVoList，判断声音的排序是否大于试听数量并且根据声音ID取出mapResult的value判断是否购买，如果声音排序大于FreeNum并且未购买，将isShowPaidMark设置为true
+					//【修复NPE】TrackPaidMap 可能不含某些声音的 key（下游只返回部分数据），get 返回 null 直接 equals 会 NPE；
+					// 改 Objects.equals，缺 key 视为未购买
 					albumTrackListVoList.forEach(item->{
-						if(item.getOrderNum()>FreeNum&&TrackPaidMap.get(item.getTrackId()).equals(SystemConstant.TRACK_NOT_BUY))
+						if(item.getOrderNum()>FreeNum&&Objects.equals(TrackPaidMap.get(item.getTrackId()),SystemConstant.TRACK_NOT_BUY))
 						{
 							item.setIsShowPaidMark(true);
 						}
@@ -402,5 +400,37 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 		trackStatMapper.insert(new TrackStat(trackInfo.getId(), SystemConstant.TRACK_STAT_COLLECT,0));//收藏量
 		trackStatMapper.insert(new TrackStat(trackInfo.getId(), SystemConstant.TRACK_STAT_PRAISE,0));//点赞量
 		trackStatMapper.insert(new TrackStat(trackInfo.getId(), SystemConstant.TRACK_STAT_COMMENT,0));//评论量
+	}
+
+	//根据声音ID列表批量查询声音信息（供收藏列表、收听历史等场景组装数据，避免逐条 Feign 的 N+1）
+	@Override
+	public List<TrackInfo> findTrackInfoListByIds(List<Long> trackIds) {
+		if (CollectionUtils.isEmpty(trackIds)) {
+			return Collections.emptyList();
+		}
+		return trackInfoMapper.selectList(new LambdaQueryWrapper<TrackInfo>().in(TrackInfo::getId, trackIds));
+	}
+
+	//根据声音ID获取四个统计数据（播放/收藏/点赞/评论），供播放页展示
+	@Override
+	public TrackStatVo getTrackStatVo(Long trackId) {
+		TrackStatVo statVo = new TrackStatVo();
+		if (trackId == null) {
+			return statVo;
+		}
+		List<TrackStat> statList = trackStatMapper.selectList(
+				new LambdaQueryWrapper<TrackStat>().eq(TrackStat::getTrackId, trackId));
+		for (TrackStat stat : statList) {
+			if (SystemConstant.TRACK_STAT_PLAY.equals(stat.getStatType())) {
+				statVo.setPlayStatNum(stat.getStatNum());
+			} else if (SystemConstant.TRACK_STAT_COLLECT.equals(stat.getStatType())) {
+				statVo.setCollectStatNum(stat.getStatNum());
+			} else if (SystemConstant.TRACK_STAT_PRAISE.equals(stat.getStatType())) {
+				statVo.setPraiseStatNum(stat.getStatNum());
+			} else if (SystemConstant.TRACK_STAT_COMMENT.equals(stat.getStatType())) {
+				statVo.setCommentStatNum(stat.getStatNum());
+			}
+		}
+		return statVo;
 	}
 }

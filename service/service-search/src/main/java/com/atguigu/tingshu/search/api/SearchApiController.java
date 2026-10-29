@@ -47,15 +47,33 @@ public class SearchApiController {
      * 批量上架
      * @return
      */
-    @Operation(summary = "批量上架专辑数据到es中，用于搜索时有数据")
-    @GetMapping("batchUpperAlbum")
-    public Result batchUpperAlbum(){
-        //  循环
-        for (long i = 1; i <= 1500; i++) {
-            searchService.upperAlbum(i);
+    @Operation(summary = "批量上架专辑数据到es中，用于搜索时有数据；【压测配套】上限参数化，可灌 10 万级数据")
+    @GetMapping("batchUpperAlbum/{upperId}")
+    public Result batchUpperAlbum(@PathVariable long upperId) throws InterruptedException {
+        //【压测配套】原串行循环有两个问题：① 专辑 id 存在空洞（删改遗留），
+        // upperAlbum 的 Assert.notNull 会抛异常导致整体中断；② 10 万级串行耗时约 2 小时。
+        // 现改为：并行加载（12 线程）+ 单条失败跳过计数，返回 ok/skip 统计。
+        java.util.concurrent.atomic.AtomicInteger ok = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger skip = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(12);
+        try {
+            for (long i = 1; i <= upperId; i++) {
+                final long albumId = i;
+                pool.submit(() -> {
+                    try {
+                        searchService.upperAlbum(albumId);
+                        ok.incrementAndGet();
+                    } catch (Exception e) {
+                        // 专辑不存在（id 空洞）或其他单条失败：跳过不中断
+                        skip.incrementAndGet();
+                    }
+                });
+            }
+        } finally {
+            pool.shutdown();
+            pool.awaitTermination(6, java.util.concurrent.TimeUnit.HOURS);
         }
-        //  返回数据
-        return Result.ok();
+        return Result.ok("加载完成：ok=" + ok.get() + ", skip=" + skip.get());
     }
     //专辑检索的接口
     @Operation(summary = "搜索框中进行专辑搜索")

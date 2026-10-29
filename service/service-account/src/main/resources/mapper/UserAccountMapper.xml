@@ -13,13 +13,31 @@
 	<sql id="columns">
 		id,user_id,total_amount,lock_amount,available_amount,total_income_amount,total_pay_amount,create_time,update_time,is_deleted
 	</sql>
+    <!-- 事务内先锁账户，同一用户的扣款串行化。 -->
+    <select id="selectForDeduction" resultMap="userAccountMap">
+        SELECT <include refid="columns"/>
+        FROM user_account
+        WHERE user_id = #{userId} AND is_deleted = 0
+        FOR UPDATE
+    </select>
 	<update id="checkAndDeduct">
 		UPDATE user_account
 		SET total_amount = total_amount - #{amount},
 			available_amount = available_amount - #{amount}
 		WHERE
 			user_id = #{userId}
+		  AND #{amount} > 0
 		  AND available_amount >= #{amount}
+		  AND is_deleted = 0
+	</update>
+
+	<!--【修复#5】充值入账原子累加，与扣减侧 checkAndDeduct 保持同一并发安全策略-->
+	<update id="incrTotalAndAvailable">
+		UPDATE user_account
+		SET total_amount = total_amount + #{amount},
+			available_amount = available_amount + #{amount}
+		WHERE
+			user_id = #{userId}
 		  AND is_deleted = 0
 	</update>
 

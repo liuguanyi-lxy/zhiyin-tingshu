@@ -1,6 +1,9 @@
 package com.atguigu.tingshu.order.api;
 
+import com.atguigu.tingshu.common.enums.BusinessType;
+import com.atguigu.tingshu.common.enums.OperatorType;
 import com.atguigu.tingshu.common.login.LoginVerification;
+import com.atguigu.tingshu.common.annotation.Log;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.order.OrderInfo;
@@ -53,6 +56,7 @@ public class OrderInfoApiController {
 	 * @return
 	 */
 	@LoginVerification
+	@Log(title = "订单提交", businessType = BusinessType.INSERT, operatorType = OperatorType.MOBILE)
 	@Operation(summary = "立即结算后进入支付界面选择支付方式后生成订单")
 	@PostMapping("submitOrder")
 	public Result<Map<String, Object>> submitOrder(@RequestBody @Validated OrderInfoVo orderInfoVo) {

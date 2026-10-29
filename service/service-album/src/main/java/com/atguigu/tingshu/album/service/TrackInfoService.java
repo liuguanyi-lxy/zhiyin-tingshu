@@ -6,6 +6,7 @@ import com.atguigu.tingshu.vo.album.AlbumTrackListVo;
 import com.atguigu.tingshu.vo.album.TrackInfoVo;
 import com.atguigu.tingshu.vo.album.TrackListVo;
 import com.atguigu.tingshu.vo.album.TrackStatMqVo;
+import com.atguigu.tingshu.vo.album.TrackStatVo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -30,4 +31,10 @@ public interface TrackInfoService extends IService<TrackInfo> {
     List<Map<String, Object>> findUserTrackPaidList(Long trackId);
     //根据选择本集的声音ID和选择购买的声音数量批量获取下单付费声音列表
     List<TrackInfo> findPaidTrackInfoList(Long trackId, Integer trackCount);
+
+    //根据声音ID列表批量查询声音信息（供收藏列表、收听历史等场景组装数据，避免逐条 Feign 的 N+1）
+    List<TrackInfo> findTrackInfoListByIds(List<Long> trackIds);
+
+    //根据声音ID获取四个统计数据（播放/收藏/点赞/评论），供播放页展示
+    TrackStatVo getTrackStatVo(Long trackId);
 }

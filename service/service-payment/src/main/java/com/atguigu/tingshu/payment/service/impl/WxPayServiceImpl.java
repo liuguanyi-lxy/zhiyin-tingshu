@@ -87,9 +87,11 @@ public class WxPayServiceImpl implements WxPayService {
 		//创建request对象，设置微信支付需要参数
 		PrepayRequest request = new PrepayRequest();
 		// 注意在这个包下 com.wechat.pay.java.service.payments.jsapi.model.Amount
-		//TODO 支付金额   支付0.01,作为测试
+		//【修复#5】使用支付记录的真实金额（单位：分），替代原来的硬编码 1 分钱；
+		// 回调侧 updatePaymentStatus 会校验微信通知的金额与此处下单金额一致，两处必须同源
 		Amount amount = new Amount();
-		amount.setTotal(1);
+		amount.setTotal(paymentInfo.getAmount().movePointRight(2)
+				.setScale(0, java.math.RoundingMode.HALF_UP).intValueExact());
 		request.setAmount(amount);
 
 		//公众号id  商户号等信息

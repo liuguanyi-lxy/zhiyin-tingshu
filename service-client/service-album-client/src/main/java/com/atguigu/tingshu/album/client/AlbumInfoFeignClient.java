@@ -8,6 +8,8 @@ import com.atguigu.tingshu.vo.album.AlbumStatVo;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
@@ -32,4 +34,8 @@ public interface AlbumInfoFeignClient {
     //根据专辑id获取四个统计数据
     @GetMapping("api/album/albumInfo/getAlbumInfoStat/{albumId}")
     public Result<AlbumStatVo> getAlbumInfoStat(@PathVariable Long albumId);
+
+    //根据专辑ID列表批量获取专辑信息（供用户服务组装订阅列表等场景，避免 N+1）
+    @PostMapping("api/album/albumInfo/findAlbumInfoList")
+    public Result<List<AlbumInfo>> findAlbumInfoList(@RequestBody List<Long> albumIds);
 }

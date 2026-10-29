@@ -45,11 +45,6 @@
     </appender>
 
 <!--     logstash日志-->
-    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-        <!-- logstash ip和暴露的端口，logback就是通过这个地址把日志发送给logstash -->
-        <destination>192.168.13.100:5044</destination>
-        <encoder charset="UTF-8" class="net.logstash.logback.encoder.LogstashEncoder" />
-    </appender>
 
     <!-- 开发环境 -->
     <springProfile name="dev">
@@ -59,9 +54,18 @@
         <root level="INFO">
 <!-- 配置两个日志输出目标：控制台和Logstash -->
             <appender-ref ref="CONSOLE" />  <!-- 将日志输出到控制台 -->
-            <appender-ref ref="LOGSTASH" />  <!-- 将日志输出到Logstash，用于日志收集和分析 -->
+            <!-- 日志同时推送 ELK（虚拟机 logstash，与前端接入层同生共死） -->
+            <appender-ref ref="LOGSTASH" />
 <!--            <appender-ref ref="FILE" />-->
         </root>
     </springProfile>
 
+
+    <!-- 【迁移】Logstash 推送默认开启：ELK 与前端接入层同住虚拟机，前端可用即 ELK 可用；
+         destination 可由 logstash.destination 属性覆盖（指向不可达地址即等价关闭） -->
+    <springProperty name="LOGSTASH_DEST" source="logstash.destination" defaultValue="192.168.13.100:5044"/>
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>${LOGSTASH_DEST}</destination>
+        <encoder charset="UTF-8" class="net.logstash.logback.encoder.LogstashEncoder" />
+    </appender>
 </configuration>

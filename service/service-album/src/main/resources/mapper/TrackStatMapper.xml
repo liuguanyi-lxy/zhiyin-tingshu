@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.atguigu.tingshu.album.mapper.TrackStatMapper">
+    <!--【修复#3】原子累加：数据库层面 stat_num = stat_num + n，避免并发丢失更新-->
+    <update id="incrTrackStatNum">
+        UPDATE track_stat
+        SET stat_num = stat_num + #{count}, update_time = NOW()
+        WHERE track_id = #{trackId} AND stat_type = #{statType} AND is_deleted = 0
+    </update>
+</mapper>

@@ -6,5 +6,5 @@ canal:
   server: 192.168.200.130:11111
 spring:
   redis:
-    host: 47.119.114.135
+    host: ${REDIS_HOST:127.0.0.1}
     port: 6379

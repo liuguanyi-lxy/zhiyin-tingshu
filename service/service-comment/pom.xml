@@ -13,10 +13,6 @@
     <packaging>jar</packaging>
     <version>1.0</version>
 
-    <properties>
-        <skipTests>true</skipTests>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.atguigu.tingshu</groupId>
@@ -26,6 +22,18 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+        <!-- 用户信息 Feign：发布评论时冗余昵称头像 -->
+        <dependency>
+            <groupId>com.atguigu.tingshu</groupId>
+            <artifactId>service-user-client</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <!-- 单元测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

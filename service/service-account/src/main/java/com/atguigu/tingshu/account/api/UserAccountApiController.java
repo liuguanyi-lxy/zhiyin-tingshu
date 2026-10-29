@@ -1,6 +1,8 @@
 package com.atguigu.tingshu.account.api;
 
 import com.atguigu.tingshu.account.service.UserAccountService;
+import com.atguigu.tingshu.account.security.AccountInternalAuth;
+import com.atguigu.tingshu.common.constant.AccountInternalConstant;
 import com.atguigu.tingshu.common.login.LoginVerification;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
@@ -20,6 +22,8 @@ public class UserAccountApiController {
 
 	@Autowired
 	private UserAccountService userAccountService;
+	@Autowired
+	private AccountInternalAuth accountInternalAuth;
 	/**
 	 * 获取账户可用余额
 	 * @return
@@ -35,7 +39,9 @@ public class UserAccountApiController {
 	//检查账户余额，充足则扣减余额并且添加对应的购买记录
 	@Operation(summary = "检查账户余额，充足则扣减余额并且添加对应的购买记录")
 	@PostMapping("checkAndDeduct")
-	Result checkAndDeduct(@RequestBody AccountLockVo accountDeductVo) {
+	public Result checkAndDeduct(@RequestBody AccountLockVo accountDeductVo,
+			@RequestHeader(value = AccountInternalConstant.HEADER, required = false) String internalToken) {
+		accountInternalAuth.requireTrustedCaller(internalToken);
 		Result result = userAccountService.checkAndDeduct(accountDeductVo);
 		return result;
 	}

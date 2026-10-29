@@ -30,7 +30,7 @@ public class AuthContextHolder {
         return userId.get();
     }
 
-    /** 请求结束时清理用户 ID，避免线程池复用造成数据串线。 */
+    /** 请求结束时清理用户 ID，避免线程池复用线程造成数据串线。 */
     public static void removeUserId() {
         userId.remove();
     }

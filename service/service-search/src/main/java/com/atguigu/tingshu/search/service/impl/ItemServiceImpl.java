@@ -14,10 +14,9 @@ import org.springframework.stereotype.Service;
 import com.atguigu.tingshu.common.result.Result;
 import org.springframework.util.Assert;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -33,7 +32,9 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public Map<String, Object> getItem(Long albumId) {
         //创建一个map集合存储专辑详情数据
-        HashMap<String, Object> AlbumInfoMap = new HashMap<>();
+        //【修复：并发Bug】future1~future4 在不同线程往同一个 map 写入，
+        // HashMap 非线程安全会丢数据甚至抛异常，改用 ConcurrentHashMap
+        Map<String, Object> AlbumInfoMap = new ConcurrentHashMap<>();
         //使用CompletableFuture实现异步调用多线程任务，实现多任务并发
         //1.根据专辑ID获取专辑基本信息
         CompletableFuture<AlbumInfo> future1 = CompletableFuture.supplyAsync(() ->

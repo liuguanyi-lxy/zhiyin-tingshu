@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-谷粒随享（蛊听月）听书平台后端，Spring Cloud 微服务项目，Maven 多模块聚合工程（`tingshu-parent` 为父 pom）。前端为微信小程序 uni-app，单独维护，不在本仓库内。
+知音听书听书平台后端，Spring Cloud 微服务项目，Maven 多模块聚合工程（`tingshu-parent` 为父 pom）。前端为微信小程序 uni-app（编译产物），位于本仓库 `mp-weixin/` 目录。
 
 ## 技术栈
 
@@ -66,12 +66,10 @@ tingshu-parent
 
 ## 外部基础设施（Nacos 拉取的真实配置）
 
-- Nacos 注册/配置中心：`47.119.114.135:8848`
-- MySQL：`47.119.114.135:3306`（root/root，按服务分库）
-- Redis：`47.119.114.135:6379` db0
-- RabbitMQ：`47.119.114.135:5672`（guest/guest）
-- MongoDB：`47.119.114.135:27017`，库 `tingshu`
-- Elasticsearch：`47.119.114.135:9200`（elastic/111111）
+- Nacos 注册/配置中心：`${NACOS_SERVER_ADDR}（环境变量注入，勿硬编码）`
+- MySQL：`${DB_HOST}`（按服务分库，账号密码走环境变量）
+- Redis/RabbitMQ/MongoDB/ES：同上一台中间件服务器，地址均由环境变量或 Nacos 注入
+
 - Seata：共享配置 `seata-common.yaml`，seata-server 已注册进 Nacos
 - XXL-JOB 调度中心 2.4.0；Sentinel 控制台 `localhost:8080`
 - `资料/DEFAULT_GROUP/` 下为 Nacos 上各 `*-dev.yaml` 配置的本地备份（修改配置时注意同步）

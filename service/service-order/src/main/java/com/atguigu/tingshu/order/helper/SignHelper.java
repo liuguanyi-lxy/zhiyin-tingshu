@@ -15,7 +15,24 @@ import java.util.TreeMap;
 @Schema(description="签名工具类,校验传入的map中的明文数据和生成明文数据加密后的签名")
 public class SignHelper {
 
-    private static String signKey = "lxy123456";
+    /**
+     * 签名密钥。
+     * 【修复#3】原实现硬编码真实密钥并提交进仓库，等于公开；现由 OrderSignKeyConfig 在启动时
+     * 从 Nacos 配置 tingshu.order.sign-key 注入，仓库内仅保留占位默认值（仅供本地测试，
+     * 生产环境必须在 Nacos 覆盖，启动日志会警告）。
+     */
+    private static String signKey = "dev-only-sign-key-override-in-nacos";
+
+    /** 供配置类注入真实密钥；测试中也可显式设置 */
+    public static void setSignKey(String key) {
+        if (StringUtils.hasText(key)) {
+            signKey = key;
+        }
+    }
+
+    static String currentSignKey() {
+        return signKey;
+    }
     /**
      * 验签方法
      * @param parameterMap

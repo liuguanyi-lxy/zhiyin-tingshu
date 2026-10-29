@@ -27,4 +27,9 @@ public class AlbumInfoDegradeFeignClient implements AlbumInfoFeignClient {
     public Result<AlbumStatVo> getAlbumInfoStat(Long albumId) {
         return Result.fail();
     }
+
+    @Override
+    public Result<List<AlbumInfo>> findAlbumInfoList(List<Long> albumIds) {
+        return Result.fail();
+    }
 }
