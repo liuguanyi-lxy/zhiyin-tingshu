@@ -7,3 +7,7 @@
 *.md text eol=lf
 *.json text eol=lf
 *.sh text eol=lf eol-working-tree=crlf
+
+# uni-app 编译产物（微信小程序），不计入语言统计。
+# 否则 mp-weixin 下的 js 会盖过后端 Java，导致仓库主语言被误判为 JavaScript。
+mp-weixin/** -linguist-detectable
