@@ -26,8 +26,11 @@ fi
 pkill -f "java .*${JAR}" 2>/dev/null || true
 
 mkdir -p "$DIR/logs"
-echo "[restart] 启动 $JAR"
-nohup java -Dfile.encoding=UTF-8 -jar "$JAR" \
+# 服务用 JDK 17 编译；服务器裸机默认无 java，显式指向 /opt/jdk17
+JAVA_BIN=/opt/jdk17/bin/java
+[ -x "$JAVA_BIN" ] || JAVA_BIN=java
+echo "[restart] 启动 $JAR（$JAVA_BIN）"
+nohup "$JAVA_BIN" -Dfile.encoding=UTF-8 -jar "$JAR" \
   > "$DIR/logs/${NAME}.log" 2>&1 &
 echo $! > "$DIR/${NAME}.pid"
 echo "[restart] 已启动 pid=$(cat "$DIR/${NAME}.pid") 日志: $DIR/logs/${NAME}.log"
