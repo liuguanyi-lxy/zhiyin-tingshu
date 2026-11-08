@@ -41,16 +41,18 @@ import java.util.Map;
 @Aspect
 @Component
 public class LogAspect {
-    //
+    // 日志记录器，用于记录操作日志
     private static final Logger log = LoggerFactory.getLogger(LogAspect.class);
 
     /** ELK 检索锚点：Kibana/ES 中按该前缀过滤即得全量操作日志 */
     public static final String OPER_LOG_MARKER = "[OPER_LOG]";
 
     /**
-     * 处理完请求后执行
+     * 处理完请求后执行 - 正常情况下的日志记录
      *
      * @param joinPoint 切点
+     * @param controllerLog 控制器日志注解，会获取注解实例
+     * @param jsonResult 方法返回的JSON结果
      */
     @AfterReturning(pointcut = "@annotation(controllerLog)", returning = "jsonResult")
     public void doAfterReturning(JoinPoint joinPoint, Log controllerLog, Object jsonResult) {
@@ -58,24 +60,37 @@ public class LogAspect {
     }
 
     /**
-     * 拦截异常操作
+     * 拦截异常操作 - 异常情况下的日志记录
      *
      * @param joinPoint 切点
-     * @param e         异常
+
+     * @param controllerLog 控制器日志注解
+     * @param e         获取方法的异常信息
      */
     @AfterThrowing(value = "@annotation(controllerLog)", throwing = "e")
     public void doAfterThrowing(JoinPoint joinPoint, Log controllerLog, Exception e) {
         handleLog(joinPoint, controllerLog, e, null);
     }
 
+    /**
+     * 处理日志记录的核心方法
+     *
+     * @param joinPoint 切点，被增强的方法
+     * @param controllerLog 控制器日志注解
+     * @param e 异常信息（如果有）
+     * @param jsonResult 方法返回结果（如果有）
+     */
     protected void handleLog(final JoinPoint joinPoint, Log controllerLog, final Exception e, Object jsonResult) {
         try {
+            // 获取当前请求的属性
             RequestAttributes ra = RequestContextHolder.getRequestAttributes();
             ServletRequestAttributes sra = (ServletRequestAttributes) ra;
             HttpServletRequest request = sra.getRequest();
 
             // *========操作日志组装=========*//
+            // 创建操作日志实体
             SysOperLog operLog = new SysOperLog();
+            // 设置操作状态：1表示成功，0表示失败
             operLog.setStatus(1);
             // 请求的地址
             String ip = IpUtil.getIpAddress(request);

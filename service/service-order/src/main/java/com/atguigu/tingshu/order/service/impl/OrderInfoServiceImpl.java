@@ -199,8 +199,11 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
             accountLockVo.setContent(orderInfoVo.getOrderDetailVoList().get(0).getItemName());
             //远程调用account微服务接口,根据返回结果的状态码判断是否余额充足,不充足则抛出异常,并且对账户数据库的相关数据进行添加修改
             Result result = userAccountFeignClient.checkAndDeduct(accountLockVo);
-            if(result.getCode().equals(ResultCodeEnum.ACCOUNT_LESS.getCode())){
-                throw new GuiguException(ResultCodeEnum.ACCOUNT_LESS);
+            if (result == null || !ResultCodeEnum.SUCCESS.getCode().equals(result.getCode())) {
+                if (result != null && ResultCodeEnum.ACCOUNT_LESS.getCode().equals(result.getCode())) {
+                    throw new GuiguException(ResultCodeEnum.ACCOUNT_LESS);
+                }
+                throw new GuiguException(ResultCodeEnum.SERVICE_ERROR);
             }
 
             //2.检查和扣减余额成功后生成订单，在order微服务中对order数据库添加对应的记录，订单表、订单详情表、订单减免表

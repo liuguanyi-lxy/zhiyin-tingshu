@@ -16,7 +16,7 @@ class SignHelperTest {
     @org.junit.jupiter.api.BeforeAll
     static void setUpSignKey() {
         //【修复#3】密钥改为配置注入后，测试显式设定固定密钥保证可重复
-        SignHelper.setSignKey("test-sign-key");
+        SignHelper.setSignKey("test-only-signing-key-for-unit-tests-32-chars");
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.atguigu.tingshu.gateway.filter;
 
 import com.atguigu.tingshu.common.result.Result;
+import com.atguigu.tingshu.common.constant.AccountInternalConstant;
+import org.springframework.http.HttpStatus;
 import com.atguigu.tingshu.common.result.ResultCodeEnum;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -101,6 +103,12 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
+        // 内部扣款和账户初始化接口不对外开放，即使携带合法用户 token 或伪造内部头也不转发。
+        String normalizedPath = path.replaceAll(";[^/]*", "");
+        if (isInternalAccountPath(normalizedPath)) {
+            exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+            return exchange.getResponse().setComplete();
+        }
         //1. 白名单路径直接放行
         if (isWhiteList(path)) {
             return chain.filter(exchange);
@@ -128,6 +136,11 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
      */
     private boolean isWhiteList(String path) {
         return WHITE_LIST.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
+    }
+
+    private boolean isInternalAccountPath(String path) {
+        return pathMatcher.match(AccountInternalConstant.DEDUCT_PATH + "/**", path)
+                || pathMatcher.match(AccountInternalConstant.INIT_ACCOUNT_PATH_PREFIX + "**", path);
     }
 
     /**

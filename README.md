@@ -137,6 +137,8 @@ tingshu-parent
 > 各服务实际配置（数据源、Redis、第三方密钥等）在 **Nacos 配置中心**，不随代码提交；
 > `src/main/resources/bootstrap.properties` 只声明 Nacos 地址与应用名。
 
+账户内部调用与订单签名需显式配置强随机密钥：`TINGSHU_ACCOUNT_INTERNAL_TOKEN`（至少 32 个字符，在 `service-account`、`service-user`、`service-order` 使用相同值）和 `TINGSHU_ORDER_SIGN_KEY`（至少 32 个字符，配置在 `service-order`）。本地 `资料/DEFAULT_GROUP` 配置备份从环境变量读取这些值；部署时需在对应服务的 Nacos 配置中设置。账户服务凭证缺失时会拒绝内部请求，订单签名密钥缺失或过短时订单服务会拒绝启动。数据库、RabbitMQ、Elasticsearch 和 MinIO 凭据也应由环境或密钥管理配置提供；开发配置不再附带弱默认账号密码。
+
 ### 构建与运行
 
 ```bash

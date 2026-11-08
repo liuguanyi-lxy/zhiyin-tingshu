@@ -11,9 +11,7 @@ import jakarta.annotation.PostConstruct;
 /**
  * 订单签名密钥装配。
  *
- * <p>【修复#3】签名密钥原硬编码在 SignHelper 中并随仓库公开，现改为从配置中心读取：
- * Nacos 的 service-order 配置中增加 tingshu.order.sign-key 即可覆盖；
- * 未配置时使用占位默认值并打警告，生产环境必须配置。</p>
+ * <p>签名密钥从 Nacos 或环境变量读取；缺失、空白或过短时阻止服务启动。</p>
  */
 @Slf4j
 @Configuration
@@ -24,11 +22,10 @@ public class OrderSignKeyConfig {
 
     @PostConstruct
     public void initSignKey() {
-        if (StringUtils.hasText(signKey)) {
-            SignHelper.setSignKey(signKey);
-            log.info("[订单签名] 已从配置加载签名密钥");
-        } else {
-            log.warn("[订单签名] 未配置 tingshu.order.sign-key，正在使用占位默认密钥——仅可用于本地测试，生产环境必须在 Nacos 覆盖！");
+        if (!StringUtils.hasText(signKey) || signKey.length() < SignHelper.MIN_SIGN_KEY_LENGTH) {
+            throw new IllegalStateException("tingshu.order.sign-key must contain at least 32 characters");
         }
+        SignHelper.setSignKey(signKey);
+        log.info("[订单签名] 已从配置加载签名密钥");
     }
 }

@@ -17,17 +17,18 @@ public class SignHelper {
 
     /**
      * 签名密钥。
-     * 【修复#3】原实现硬编码真实密钥并提交进仓库，等于公开；现由 OrderSignKeyConfig 在启动时
-     * 从 Nacos 配置 tingshu.order.sign-key 注入，仓库内仅保留占位默认值（仅供本地测试，
-     * 生产环境必须在 Nacos 覆盖，启动日志会警告）。
+     * 启动时由 OrderSignKeyConfig 从配置中心注入。未配置时保持空值并拒绝签名，
+     * 避免使用任何仓库内可预测的默认密钥。
      */
-    private static String signKey = "dev-only-sign-key-override-in-nacos";
+    public static final int MIN_SIGN_KEY_LENGTH = 32;
+    private static String signKey = "";
 
     /** 供配置类注入真实密钥；测试中也可显式设置 */
     public static void setSignKey(String key) {
-        if (StringUtils.hasText(key)) {
-            signKey = key;
+        if (!StringUtils.hasText(key) || key.length() < MIN_SIGN_KEY_LENGTH) {
+            throw new IllegalArgumentException("Order signing key must contain at least 32 characters");
         }
+        signKey = key;
     }
 
     static String currentSignKey() {
@@ -74,6 +75,9 @@ public class SignHelper {
      * @return
      */
     public static String getSign(Map<String, Object> parameterMap) {
+        if (!StringUtils.hasText(signKey) || signKey.length() < MIN_SIGN_KEY_LENGTH) {
+            throw new IllegalStateException("Order signing key is not configured");
+        }
         //去掉明文数据的sign参数
         if(parameterMap.containsKey("sign")) {
             parameterMap.remove("sign");

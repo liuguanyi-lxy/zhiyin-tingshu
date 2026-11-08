@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 
@@ -28,49 +29,55 @@ public class UserAccountServiceImpl extends ServiceImpl<UserAccountMapper, UserA
 	private UserAccountMapper userAccountMapper;
 	@Autowired
 	private UserAccountDetailMapper userAccountDetailMapper;
-	//检查和扣减余额,并且添加对应的购买记录
-//	@Override
-//	public void checkAndDeduct(AccountLockVo accountDeductVo) {
-//		//只有账号余额大于等于要扣减的金额才能扣减金额，否则就不会更新账户的total_amount和available_amount
-//		// ,根据count即影响的行数判断是否扣减成功
-//		int count = userAccountMapper.checkAndDeduct(accountDeductVo.getAmount(), accountDeductVo.getUserId());
-//		//扣减不成功就抛出异常，账户余额不足给前端
-//		if(count == 0) {
-//			throw new GuiguException(ResultCodeEnum.ACCOUNT_LESS);
-//		}
-//		//添加账户记录到账户详情表
-//		UserAccountDetail userAccountDetail=new UserAccountDetail();
-//		userAccountDetail.setUserId(accountDeductVo.getUserId());
-//		userAccountDetail.setTitle(accountDeductVo.getContent());
-//		userAccountDetail.setTradeType(SystemConstant.ACCOUNT_TRADE_TYPE_MINUS);
-//		userAccountDetail.setAmount(accountDeductVo.getAmount());
-//		userAccountDetail.setOrderNo(accountDeductVo.getOrderNo());
-//		userAccountDetailMapper.insert(userAccountDetail);
-//	}
-	//检查并扣减余额，使用数据库原子SQL实现，条件更新保证并发扣减正确且余额不足时影响行数为0
+    /** 同一用户的扣款先锁账户，再检查消费流水，防止并发重试重复扣款。 */
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public Result checkAndDeduct(AccountLockVo accountDeductVo) {
-       //调用原子SQL，由数据库在当前行上执行 total_amount-amount、available_amount-amount
-       //MySQL对单行UPDATE加行锁，并发扣款串行执行，不会出现先读后改导致的丢失更新
-       int count = userAccountMapper.checkAndDeduct(accountDeductVo.getAmount(), accountDeductVo.getUserId());
-       //余额不足,设置对应的返回结果
-       if(count == 0) {
-           log.error("抛出余额不足异常");
-         return Result.fail().code(ResultCodeEnum.ACCOUNT_LESS.getCode()).message(ResultCodeEnum.ACCOUNT_LESS.getMessage());
-       }
-        log.info("账户余额充足继续执行，添加账户消费记录");
-       //添加账户记录到账户详情表
-       UserAccountDetail userAccountDetail=new UserAccountDetail();
-       userAccountDetail.setUserId(accountDeductVo.getUserId());
-       userAccountDetail.setTitle(accountDeductVo.getContent());
-       userAccountDetail.setTradeType(SystemConstant.ACCOUNT_TRADE_TYPE_MINUS);
-       userAccountDetail.setAmount(accountDeductVo.getAmount());
-       userAccountDetail.setOrderNo(accountDeductVo.getOrderNo());
-       userAccountDetailMapper.insert(userAccountDetail);
-       return Result.ok();
+    public Result checkAndDeduct(AccountLockVo request) {
+        if (request == null || request.getUserId() == null || request.getUserId() <= 0
+                || !StringUtils.hasText(request.getOrderNo())
+                || request.getOrderNo().length() > 64
+                || request.getAmount() == null || request.getAmount().signum() <= 0
+                || request.getAmount().stripTrailingZeros().scale() > 2) {
+            throw new GuiguException(ResultCodeEnum.ARGUMENT_VALID_ERROR);
+        }
+
+        UserAccount account = userAccountMapper.selectForDeduction(request.getUserId());
+        if (account == null) {
+            throw new GuiguException(ResultCodeEnum.ACCOUNT_ERROR);
+        }
+        // FOR UPDATE 使用当前读，避免事务快照遗漏前一次已提交的消费流水。
+        UserAccountDetail previous = userAccountDetailMapper.selectOne(
+                new LambdaQueryWrapper<UserAccountDetail>()
+                        .eq(UserAccountDetail::getUserId, request.getUserId())
+                        .eq(UserAccountDetail::getOrderNo, request.getOrderNo())
+                        .eq(UserAccountDetail::getTradeType, SystemConstant.ACCOUNT_TRADE_TYPE_MINUS)
+                        .last("FOR UPDATE"));
+        if (previous != null) {
+            if (previous.getAmount() == null || previous.getAmount().compareTo(request.getAmount()) != 0) {
+                throw new GuiguException(ResultCodeEnum.ILLEGAL_REQUEST);
+            }
+            return Result.ok();
+        }
+
+        int count = userAccountMapper.checkAndDeduct(request.getAmount(), request.getUserId());
+        if (count == 0) {
+            return Result.build(null, ResultCodeEnum.ACCOUNT_LESS);
+        }
+        if (count != 1) {
+            throw new GuiguException(ResultCodeEnum.DATA_ERROR);
+        }
+        UserAccountDetail detail = new UserAccountDetail();
+        detail.setUserId(request.getUserId());
+        detail.setTitle(request.getContent());
+        detail.setTradeType(SystemConstant.ACCOUNT_TRADE_TYPE_MINUS);
+        detail.setAmount(request.getAmount());
+        detail.setOrderNo(request.getOrderNo());
+        if (userAccountDetailMapper.insert(detail) != 1) {
+            throw new GuiguException(ResultCodeEnum.SERVICE_ERROR);
+        }
+        return Result.ok();
     }
-	//获取用户可用余额
+
 	@Override
 	public BigDecimal getAvailableAmount(Long userId) {
 		// 根据用户Id 获取到用户余额对象

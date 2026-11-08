@@ -63,16 +63,32 @@ public class RabbitService {
         return true;
     }
 
+/**
+ * 构建用于消息队列的相关数据对象
+ * @param exchange 交换机名称
+ * @param routingKey 路由键
+ * @param message 要发送的消息内容
+ * @param delayTime 延迟时间（毫秒），如果为null则不设置延迟
+ * @return 返回构建好的GuiguCorrelationData对象
+ */
     private GuiguCorrelationData buildCorrelationData(String exchange, String routingKey, Object message, Integer delayTime) {
         // correlationData 不是消费者的业务消息，而是发布确认阶段识别和重试消息所需的元数据。
         GuiguCorrelationData correlationData = new GuiguCorrelationData();
+        // 生成一个唯一的UUID标识符，并移除其中的连字符
         String uuid = "mq:" + UUID.randomUUID().toString().replaceAll("-", "");
+        // 设置消息的唯一标识ID
         correlationData.setId(uuid);
+        // 设置要发送的消息内容
         correlationData.setMessage(message);
+        // 设置消息交换机名称
         correlationData.setExchange(exchange);
+        // 设置消息的路由键
         correlationData.setRoutingKey(routingKey);
+        // 如果指定了延迟时间，则设置延迟相关属性
         if (delayTime != null) {
+            // 标记为延迟消息
             correlationData.setDelay(true);
+            // 设置延迟时间
             correlationData.setDelayTime(delayTime);
         }
         return correlationData;

@@ -12,6 +12,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+/**
+ * RabbitInitConfigApplicationListener类实现Spring ApplicationListener接口，
+ * 用于在Spring Boot应用启动后初始化RabbitMQ的消息确认和返回回调配置
+ */
 @Slf4j
 @Component
 public class RabbitInitConfigApplicationListener implements ApplicationListener<ApplicationReadyEvent> {
@@ -28,18 +32,29 @@ public class RabbitInitConfigApplicationListener implements ApplicationListener<
     @Autowired
     private RedisTemplate redisTemplate;
 
+/**
+ * 重写onApplicationEvent方法，在Spring Boot应用程序完全启动后执行回调设置
+ * @param event 应用程序就绪事件，当应用程序已准备好接收请求时触发
+ */
     @Override
     public void onApplicationEvent(ApplicationReadyEvent event) {
+    // 调用setupCallbacks方法设置回调
         this.setupCallbacks();
     }
 
+    /**
+     * 设置RabbitMQ的消息的确认confirm和返回return回调
+     * 包含两个主要回调：
+     * 1. confirm 确认回调 - 检查消息是否成功到达Exchange
+     * 2. return 返回回调 - 处理消息未正确到达队列的情况
+     */
     private void setupCallbacks() {
 
         /**
          * 只确认消息是否正确到达 Exchange 中,成功与否都会回调
          *
-         * @param correlation 相关数据  非消息本身业务数据
-         * @param ack             应答结果
+         * @param correlation 相关数据  非消息本身业务数据，发送消息时就会存入本地内存中
+         * @param ack             broker返回的confirm应答结果
          * @param reason           如果发送消息到交换器失败，错误原因
          */
         this.rabbitTemplate.setConfirmCallback((correlationData, ack, reason) -> {
