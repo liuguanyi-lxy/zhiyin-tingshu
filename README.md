@@ -1,5 +1,11 @@
 # 知音听书 —— 分布式听书平台（微信小程序）
 
+[![CI](https://github.com/liuguanyi-lxy/zhiyin-tingshu/actions/workflows/ci.yml/badge.svg)](https://github.com/liuguanyi-lxy/zhiyin-tingshu/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-17-orange)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.0.5-6DB33F)
+![Spring Cloud Alibaba](https://img.shields.io/badge/Spring%20Cloud%20Alibaba-2021.x-6DB33F)
+![Tests](https://img.shields.io/badge/unit%20tests-201%20passed-brightgreen)
+
 > 前后端分离的听书类微服务项目。后端基于 Spring Cloud Alibaba 微服务架构，前端为 uni-app 微信小程序。
 
 ## 项目简介
