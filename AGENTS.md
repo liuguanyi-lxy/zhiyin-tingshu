@@ -126,3 +126,16 @@ tingshu-parent
 - 路由规则在 Nacos `server-gateway-dev.yaml`：按 `Path=/*/album/**` 等前缀把请求转发到对应 `lb://` 服务；`lb:ws://` 处理直播 WebSocket。
 - `AuthGlobalFilter` **已实现统一登录鉴权**（默认全拦 + 白名单）：20 条 Ant 风格白名单路径直接放行，其余路径校验请求头 `token` 在 Redis 中是否存在（登录 token 的 key 是**裸 token 字符串**，无前缀），不存在则返回 HTTP 200 + body `{"code":208}`（前端 `request.js` 依赖 `statusCode==200 && code==208` 触发重新登录）。与各服务 `@LoginVerification` 构成双层防护。
 - 白名单中专辑详情路径用 `/api/search/albumInfo/{albumId:[0-9]+}` 正则限定为数字 ID，避免误放行 `batchUpperAlbum`、`updateLatelyAlbumRanking` 等单词路径。
+
+## Git 仓库纪律（多 agent 并发防冲突）
+
+本仓库由多个 AI agent（Codex / ZCode / Claude）共同维护，曾发生过并发历史重写互相覆盖提交的事故，因此：
+
+- **动手前先看基线**：开始任何代码修改或 git 操作前，先 `git fetch --all`、`git status`、`git log --oneline -5`，确认当前 HEAD 与远端关系
+- 本地落后时用 `git pull --ff-only` 同步；发现分叉、HEAD 哈希与预期不符或历史被重写的迹象时，立即停下向用户报告，禁止在未知基线上继续修改或提交
+- 每次 commit/push 前重查一次基线（`git log --oneline -1`）
+- **双远端都要推**：`origin` = Gitee（`git@gitee.com:vcw/gu-tingyue.git`，分支 master）、`github` = GitHub（`git@github.com:liuguanyi-lxy/zhiyin-tingshu.git`，本地 master 推到远端 main）。推送时两个远端都要更新
+- 同一时间只允许一个 agent 执行 commit/push
+- 历史重写类操作（force push、`reset --hard`、`rebase`、filter-repo）必须经用户当次明确授权；本仓库历史已于 2026-11-08 清理过敏感文件（apiclient_key.pem、资料/ 备份），不要再次重写
+- 提交前跑 `mvn -q test` 确认全绿（纯 Mockito 单测，无需中间件）
+- 部署通道：GitHub Actions CD 走 Tailscale（见 `.github/workflows/deploy.yml` 头部注释的前置配置）
