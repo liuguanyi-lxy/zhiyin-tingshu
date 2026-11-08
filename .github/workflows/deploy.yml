@@ -7,12 +7,13 @@ name: CD 部署（手动触发）
 # 1. Tailscale 管理台 → Settings → OAuth clients（旧版为 Keys）→ Generate OAuth client，
 #    权限选 Devices: Core 的 Read & Write，记下 TS_OAUTH_CLIENT_ID / TS_OAUTH_SECRET
 # 2. Tailscale 管理台 → Access controls → 在 tagOwners 中增加： "tag:ci": ["autogroup:admin"]
-# 3. GitHub 仓库 → Settings → Secrets and variables → Actions，配置 5 个 Secrets：
+# 3. GitHub 仓库 → Settings → Secrets and variables → Actions，配置 6 个 Secrets：
 #      TS_OAUTH_CLIENT_ID   Tailscale OAuth 客户端 ID
 #      TS_OAUTH_SECRET      Tailscale OAuth 客户端密钥
 #      SSH_HOST             100.118.146.116（tailnet 内网地址，公网已封禁）
 #      SSH_USER             root
 #      SSH_PRIVATE_KEY      部署用私钥全文（对应服务器 authorized_keys 中的公钥）
+#      DEPLOY_DIR           /opt/tingshu
 # 4. 服务器上已放置 /opt/tingshu/restart.sh（见仓库 deploy/restart.sh）
 
 on:
@@ -64,14 +65,22 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          # 首次跨区连接经 DERP 中继建立可能超过 keyscan 默认 5 秒，放宽超时并重试
+          for i in 1 2 3 4 5; do
+            if ssh-keyscan -H -T 20 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null; then
+              echo "known_hosts 写入成功（第 $i 次尝试）"; break
+            fi
+            echo "keyscan 第 $i 次失败，10 秒后重试"; sleep 10
+            if [ "$i" = "5" ]; then echo "keyscan 连续 5 次失败"; exit 1; fi
+          done
 
       - name: 上传 jar 并重启
         run: |
           JAR=$(find ${{ inputs.module }}/target -maxdepth 1 -name "*.jar" ! -name "*sources*" ! -name "*javadoc*" | head -1)
           if [ -z "$JAR" ]; then echo "没找到 jar，检查模块路径是否正确"; exit 1; fi
           echo "上传 $JAR"
-          scp -i ~/.ssh/deploy_key "$JAR" \
+          SCP_OPTS="-i ~/.ssh/deploy_key -o ConnectTimeout=30 -o ServerAliveInterval=10"
+          scp $SCP_OPTS "$JAR" \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_DIR }}/
-          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          ssh $SCP_OPTS ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             "bash ${{ secrets.DEPLOY_DIR }}/restart.sh ${{ inputs.module }}"
