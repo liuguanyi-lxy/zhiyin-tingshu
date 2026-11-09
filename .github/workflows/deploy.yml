@@ -76,9 +76,12 @@ jobs:
         run: |
           JAR=$(find ${{ inputs.module }}/target -maxdepth 1 -name "*.jar" ! -name "*sources*" ! -name "*javadoc*" | head -1)
           if [ -z "$JAR" ]; then echo "没找到 jar，检查模块路径是否正确"; exit 1; fi
-          echo "上传 $JAR"
+          echo "准备上传 $JAR"
+          TARGET_DIR="${{ secrets.DEPLOY_DIR }}"
+          [ -z "$TARGET_DIR" ] && TARGET_DIR="/opt/tingshu"
           SCP_OPTS="-i ~/.ssh/deploy_key -o ConnectTimeout=30 -o ServerAliveInterval=10"
+          ssh $SCP_OPTS ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p $TARGET_DIR/logs"
           scp $SCP_OPTS "$JAR" \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_DIR }}/
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:$TARGET_DIR/
           ssh $SCP_OPTS ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "bash ${{ secrets.DEPLOY_DIR }}/restart.sh ${{ inputs.module }}"
+            "bash $TARGET_DIR/restart.sh ${{ inputs.module }}"
