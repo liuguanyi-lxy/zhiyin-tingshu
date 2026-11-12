@@ -4,67 +4,76 @@
     <div v-if="loading" class="loading-state" role="status"><van-loading vertical>正在获取订单价格</van-loading></div>
     <section v-else-if="error && !quote" class="state-panel" role="alert">
       <van-empty image="error" :description="error" />
-      <van-button v-if="validSelection" plain color="#EE0A25" @click="loadQuote">重新获取</van-button>
-      <van-button v-else plain color="#EE0A25" @click="router.push('/index')">返回选择商品</van-button>
+      <van-button v-if="validSelection" plain type="primary" @click="loadQuote">重新获取</van-button>
+      <van-button v-else plain type="primary" @click="router.push('/index')">返回选择商品</van-button>
     </section>
     <template v-else-if="quote">
-      <section class="account-card">
-        <div><span class="muted">购买账号</span><strong>{{ userStore.user.nickname || '当前登录账号' }}</strong></div>
-        <div class="balance"><span class="muted">账号余额</span><strong>{{ balanceLoading ? '读取中…' : `￥${formatAmount(balance)}` }}</strong></div>
-        <div v-if="balanceError" class="balance-error" role="alert">
-          {{ balanceError }} <van-button size="mini" plain @click="loadBalance">重试</van-button>
+      <div class="confirm-body">
+        <div class="confirm-main">
+          <section class="goods-card">
+            <div class="section-title">{{ typeName }}订单</div>
+            <article v-for="(item, index) in quote.orderDetailVoList" :key="`${item.itemId}-${index}`" class="goods">
+              <van-image width="75" height="75" radius="6" fit="cover" :src="item.itemUrl" alt="商品封面" />
+              <div class="goods-info">
+                <h2>{{ item.itemName }}</h2>
+                <p class="goods-tip">以订单明细及平台服务规则为准</p>
+                <div class="goods-price"><strong class="num">￥{{ formatAmount(item.itemPrice) }}</strong><span class="muted">× 1</span></div>
+              </div>
+            </article>
+            <dl class="totals">
+              <div><dt>商品总价</dt><dd class="num">￥{{ formatAmount(quote.originalAmount) }}</dd></div>
+              <div v-if="Number(quote.derateAmount) > 0"><dt>优惠减免</dt><dd class="num accent">-￥{{ formatAmount(quote.derateAmount) }}</dd></div>
+              <div class="subtotal"><dt>小计</dt><dd class="num accent">￥{{ formatAmount(quote.orderAmount) }}</dd></div>
+            </dl>
+          </section>
+          <p class="quote-note">金额、优惠和签名均由后端生成。创建订单不代表已经支付。</p>
         </div>
-      </section>
 
-      <section v-if="selection.itemType === ITEM_TYPE.Track" class="selection-card">
-        <label for="track-plan">购买范围</label>
-        <select v-if="trackPlans.length" id="track-plan" :value="selection.trackCount" :disabled="submitting" @change="changePlan">
-          <option v-for="plan in trackPlans" :key="plan.trackCount" :value="plan.trackCount">{{ plan.name }}</option>
-        </select>
-        <span v-else>{{ selection.trackCount === 0 ? '本集' : `后 ${selection.trackCount} 集` }}</span>
-        <p v-if="plansError" class="muted">{{ plansError }}；当前范围以本次后端结算明细为准。</p>
-      </section>
+        <aside class="confirm-aside">
+          <section class="account-card">
+            <div><span class="muted">购买账号</span><strong>{{ userStore.user.nickname || '当前登录账号' }}</strong></div>
+            <div class="balance"><span class="muted">账号余额</span><strong class="num">{{ balanceLoading ? '读取中…' : `￥${formatAmount(balance)}` }}</strong></div>
+            <div v-if="balanceError" class="balance-error" role="alert">
+              {{ balanceError }} <van-button size="mini" plain @click="loadBalance">重试</van-button>
+            </div>
+          </section>
 
-      <section class="goods-card">
-        <div class="section-title">{{ typeName }}订单</div>
-        <article v-for="(item, index) in quote.orderDetailVoList" :key="`${item.itemId}-${index}`" class="goods">
-          <van-image width="75" height="75" radius="15" fit="cover" :src="item.itemUrl" alt="商品封面" />
-          <div class="goods-info">
-            <h2>{{ item.itemName }}</h2>
-            <p class="goods-tip">以订单明细及平台服务规则为准</p>
-            <div class="goods-price"><strong>￥{{ formatAmount(item.itemPrice) }}</strong><span class="muted">× 1</span></div>
-          </div>
-        </article>
-        <dl class="totals">
-          <div><dt>商品总价</dt><dd>￥{{ formatAmount(quote.originalAmount) }}</dd></div>
-          <div v-if="Number(quote.derateAmount) > 0"><dt>优惠减免</dt><dd class="accent">-￥{{ formatAmount(quote.derateAmount) }}</dd></div>
-          <div class="subtotal"><dt>小计</dt><dd class="accent">￥{{ formatAmount(quote.orderAmount) }}</dd></div>
-        </dl>
-      </section>
+          <section v-if="selection.itemType === ITEM_TYPE.Track" class="selection-card">
+            <label for="track-plan">购买范围</label>
+            <select v-if="trackPlans.length" id="track-plan" :value="selection.trackCount" :disabled="submitting" @change="changePlan">
+              <option v-for="plan in trackPlans" :key="plan.trackCount" :value="plan.trackCount">{{ plan.name }}</option>
+            </select>
+            <span v-else>{{ selection.trackCount === 0 ? '本集' : `后 ${selection.trackCount} 集` }}</span>
+            <p v-if="plansError" class="muted">{{ plansError }}；当前范围以本次后端结算明细为准。</p>
+          </section>
 
-      <section class="payment-card">
-        <h2>支付方式</h2>
-        <van-radio-group v-model="selectedPayWay">
-          <van-cell title="微信扫码支付" label="创建订单后，在订单详情中获取付款码" clickable @click="selectedPayWay = PAY_WAY.WeChat">
-            <template #right-icon><van-radio :name="PAY_WAY.WeChat" checked-color="#EE0A25" /></template>
-          </van-cell>
-          <van-cell title="账户余额" :label="BALANCE_PAYMENT_BLOCKER">
-            <template #right-icon><van-radio :name="PAY_WAY.Balance" disabled /></template>
-          </van-cell>
-        </van-radio-group>
-        <p class="payment-notice" role="note">{{ NATIVE_PAYMENT_NOTICE }}</p>
-      </section>
-      <section v-if="submitError" class="submit-error" role="alert">
-        <p>{{ submitError }}</p>
-        <p v-if="attempted">提交结果可能尚未同步。请先检查订单，勿反复创建或付款。</p>
-        <van-button size="small" plain color="#EE0A25" @click="router.push('/order')">查看我的订单</van-button>
-      </section>
-      <div class="quote-note">金额、优惠和签名均由后端生成。创建订单不代表已经支付。</div>
+          <section class="payment-card">
+            <h2 class="section-title">支付方式</h2>
+            <van-radio-group v-model="selectedPayWay">
+              <van-cell title="微信扫码支付" label="创建订单后，在订单详情中获取付款码" clickable @click="selectedPayWay = PAY_WAY.WeChat">
+                <template #right-icon><van-radio :name="PAY_WAY.WeChat" checked-color="#007aff" /></template>
+              </van-cell>
+              <van-cell title="账户余额" :label="BALANCE_PAYMENT_BLOCKER">
+                <template #right-icon><van-radio :name="PAY_WAY.Balance" disabled /></template>
+              </van-cell>
+            </van-radio-group>
+            <p class="payment-notice" role="note">{{ NATIVE_PAYMENT_NOTICE }}</p>
+          </section>
+
+          <section v-if="submitError" class="submit-error" role="alert">
+            <p>{{ submitError }}</p>
+            <p v-if="attempted">提交结果可能尚未同步。请先检查订单，勿反复创建或付款。</p>
+            <van-button size="small" plain type="primary" @click="router.push('/order')">查看我的订单</van-button>
+          </section>
+        </aside>
+      </div>
       <footer class="checkout-bar">
-        <div><span>合计：<strong>￥{{ formatAmount(quote.orderAmount) }}</strong></span><small v-if="Number(quote.derateAmount) > 0">已优惠￥{{ formatAmount(quote.derateAmount) }}</small></div>
-        <van-button color="#EE0A25" :loading="submitting" :disabled="submitting || attempted" @click="submitOrder">
-          {{ attempted && !submitting ? '请先检查订单' : '确认并创建订单' }}
-        </van-button>
+        <div class="checkout-bar-inner">
+          <div class="checkout-total"><span>合计：<strong class="num">￥{{ formatAmount(quote.orderAmount) }}</strong></span><small v-if="Number(quote.derateAmount) > 0">已优惠￥{{ formatAmount(quote.derateAmount) }}</small></div>
+          <van-button type="primary" :loading="submitting" :disabled="submitting || attempted" @click="submitOrder">
+            {{ attempted && !submitting ? '请先检查订单' : '确认并创建订单' }}
+          </van-button>
+        </div>
       </footer>
     </template>
   </main>
@@ -195,7 +204,7 @@ async function submitOrder() {
       await showConfirmDialog({
         title: '创建待支付订单',
         message: '当前扫码支付通道尚未接通，余额支付也暂不可用。继续只会创建待支付订单，不会扣款，是否继续？',
-        confirmButtonText: '确认创建', confirmButtonColor: '#EE0A25'
+        confirmButtonText: '确认创建', confirmButtonColor: '#007aff'
       })
     } catch { return }
     if (disposed || current !== version) return
@@ -216,40 +225,332 @@ onBeforeUnmount(() => { disposed = true; version += 1; balanceVersion += 1 })
 </script>
 
 <style scoped>
-.confirm-page { min-height: 100vh; background: #F8F8F8; color: #373737; padding-bottom: calc(90px + env(safe-area-inset-bottom)); font-size: 14px; }
-.loading-state { padding: 80px 0; }
-.state-panel { text-align: center; padding-bottom: 20px; }
-.account-card { margin: 20px; background: #fff; padding: 10px; border-radius: 5px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
-.account-card strong { display: block; margin-top: 10px; font-size: 16px; overflow-wrap: anywhere; }
-.balance { text-align: right; }
-.muted { color: #969696; font-size: 13px; }
-.balance-error { flex-basis: 100%; color: #EE0A25; font-size: 12px; }
-.selection-card { margin: 0 12.5px 10px; padding: 12px; background: #fff; border-radius: 5px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-.selection-card select { min-height: 36px; max-width: 65%; border: 1px solid #e5e5e5; border-radius: 5px; color: #373737; background: #fff; padding: 0 10px; font: inherit; }
-.selection-card p { flex-basis: 100%; margin: 0; line-height: 1.6; }
-.goods-card { background: #fff; padding: 10px; border-radius: 5px; margin: 0 12.5px 12px; }
-.section-title { font-weight: 600; padding: 5px 5px 15px; }
-.goods { display: flex; align-items: center; padding: 5px; margin: 5px; gap: 10px; }
-.goods :deep(.van-image) { flex-shrink: 0; }
-.goods-info { flex: 1; min-width: 0; }
-h2 { font-size: 14px; font-weight: 500; line-height: 21px; margin: 0; overflow-wrap: anywhere; }
-.goods-tip { color: #969696; font-size: 11px; margin: 7px 0; }
-.goods-price { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.goods-price strong { font-size: 18px; }
-.totals { border-top: 0.5px solid #e5e5e5; margin: 10px 5px 0; padding-top: 10px; }
-.totals div { display: flex; justify-content: space-between; padding: 8px 0; gap: 12px; }
-.totals dd { margin: 0; }
-.totals .subtotal { justify-content: flex-end; font-weight: 600; padding: 20px 0; }
-.accent { color: #EE0A25; }
-.payment-card { background: #fff; margin: 0 12.5px 12px; border-radius: 5px; overflow: hidden; }
-.payment-card h2 { padding: 15px; font-weight: 600; }
-.payment-notice { font-size: 12px; line-height: 1.8; color: #ED6A0C; margin: 12px 15px 15px; }
-.submit-error { color: #EE0A25; margin: 12px; padding: 12px; background: #fff; border-radius: 5px; line-height: 1.7; }
-.quote-note { margin: 15px 20px; color: #969696; line-height: 1.7; font-size: 12px; }
-.checkout-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; box-sizing: border-box; background: #fff; border-top: 0.5px solid #e5e5e5; padding: 10px 15px calc(10px + env(safe-area-inset-bottom)); display: flex; justify-content: space-between; align-items: center; gap: 10px; z-index: 10; }
-.checkout-bar strong { color: #EE0A25; font-size: 18px; }
-.checkout-bar small { display: block; color: #969696; font-size: 12px; margin-top: 4px; }
-.checkout-bar :deep(.van-button) { min-height: 44px; flex-shrink: 0; }
-select:focus-visible { outline: 2px solid #ED6A0C; outline-offset: 2px; }
-@media (max-width: 350px) { .checkout-bar { padding-left: 10px; padding-right: 10px; } .checkout-bar strong { font-size: 16px; } .checkout-bar :deep(.van-button) { padding: 0 10px; } }
+.confirm-page {
+  min-height: 100vh;
+  background: var(--ground);
+  color: var(--ink);
+  padding-bottom: calc(90px + env(safe-area-inset-bottom));
+  font-size: var(--fs-body);
+}
+
+.loading-state {
+  padding: 80px 0;
+}
+
+.state-panel {
+  text-align: center;
+  padding-bottom: var(--sp-4);
+}
+
+.confirm-body {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+
+.account-card,
+.selection-card,
+.goods-card,
+.payment-card,
+.submit-error {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+
+.account-card {
+  padding: var(--sp-4);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.account-card strong {
+  display: block;
+  margin-top: var(--sp-2);
+  font-size: var(--fs-section);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.balance {
+  text-align: right;
+}
+
+.muted {
+  color: var(--ink-3);
+  font-size: var(--fs-meta);
+}
+
+.balance-error {
+  flex-basis: 100%;
+  color: var(--paid);
+  font-size: var(--fs-meta);
+}
+
+.selection-card {
+  padding: var(--sp-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.selection-card label {
+  font-size: var(--fs-body);
+  color: var(--ink-2);
+}
+
+.selection-card select {
+  min-height: 38px;
+  max-width: 65%;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  background: var(--surface);
+  padding: 0 var(--sp-3);
+  font: inherit;
+}
+
+.selection-card p {
+  flex-basis: 100%;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.goods-card {
+  padding: var(--sp-4);
+}
+
+.goods-card > .section-title {
+  margin-bottom: var(--sp-3);
+}
+
+.goods {
+  display: flex;
+  align-items: center;
+  padding: var(--sp-2) 0;
+  gap: var(--sp-3);
+}
+
+.goods :deep(.van-image) {
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+}
+
+.goods-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.goods-info h2 {
+  font-size: var(--fs-body);
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.goods-tip {
+  color: var(--ink-4);
+  font-size: var(--fs-micro);
+  margin: 6px 0;
+}
+
+.goods-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.goods-price strong {
+  font-size: var(--fs-section);
+  color: var(--ink);
+}
+
+.totals {
+  border-top: 1px solid var(--line-soft);
+  margin: var(--sp-3) 0 0;
+  padding-top: var(--sp-2);
+}
+
+.totals div {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--sp-2) 0;
+  gap: var(--sp-3);
+  color: var(--ink-2);
+}
+
+.totals dd {
+  margin: 0;
+}
+
+.totals .subtotal {
+  justify-content: flex-end;
+  font-weight: 600;
+  padding: var(--sp-3) 0 0;
+  color: var(--ink);
+}
+
+.accent {
+  color: var(--brand);
+}
+
+.payment-card {
+  overflow: hidden;
+}
+
+.payment-card > .section-title {
+  padding: var(--sp-4) var(--sp-4) var(--sp-2);
+  margin: 0;
+}
+
+.payment-card :deep(.van-cell) {
+  padding-left: var(--sp-4);
+  padding-right: var(--sp-4);
+}
+
+.payment-notice {
+  font-size: var(--fs-meta);
+  line-height: 1.8;
+  color: var(--vip);
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border-top: 1px solid var(--line-soft);
+}
+
+.submit-error {
+  color: var(--paid);
+  margin: 0;
+  padding: var(--sp-4);
+  line-height: 1.7;
+  font-size: var(--fs-body);
+}
+
+.submit-error p {
+  margin: 0 0 var(--sp-2);
+}
+
+.quote-note {
+  margin: 0;
+  color: var(--ink-3);
+  line-height: 1.7;
+  font-size: var(--fs-meta);
+  padding: 0 var(--sp-1);
+}
+
+.checkout-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  box-sizing: border-box;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom));
+  z-index: 10;
+}
+
+.checkout-bar-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.checkout-bar strong {
+  color: var(--paid);
+  font-size: var(--fs-title);
+}
+
+.checkout-bar small {
+  display: block;
+  color: var(--ink-3);
+  font-size: var(--fs-micro);
+  margin-top: 4px;
+}
+
+.checkout-bar :deep(.van-button) {
+  min-height: 44px;
+  flex-shrink: 0;
+}
+
+select:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@media (max-width: 350px) {
+  .checkout-bar {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .checkout-bar strong {
+    font-size: var(--fs-section);
+  }
+
+  .checkout-bar :deep(.van-button) {
+    padding: 0 10px;
+  }
+}
+
+/* ============================================================
+   桌面端：左商品、右订单信息
+   ============================================================ */
+@media (min-width: 960px) {
+  .confirm-page {
+    padding-bottom: 96px;
+  }
+
+  .confirm-page :deep(.van-nav-bar) {
+    background: transparent;
+  }
+
+  .confirm-page :deep(.van-nav-bar__title) {
+    font-size: var(--fs-title);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .confirm-body {
+    max-width: var(--shell-max);
+    margin: 0 auto;
+    padding: var(--sp-5);
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: var(--sp-4);
+    align-items: start;
+  }
+
+  .confirm-aside {
+    display: grid;
+    gap: var(--sp-4);
+    position: sticky;
+    top: 80px;
+  }
+
+  .checkout-bar {
+    left: var(--sidebar-w);
+    right: 0;
+    transform: none;
+    max-width: none;
+    padding: var(--sp-3) var(--sp-5);
+  }
+
+  .checkout-bar-inner {
+    max-width: var(--shell-max);
+    margin: 0 auto;
+  }
+
+  .checkout-bar :deep(.van-button) {
+    min-width: 180px;
+  }
+}
 </style>

@@ -7,7 +7,7 @@
     <section class="fund-content" :aria-label="activeTab === 'invest' ? '充值记录' : '消费记录'" :aria-busy="current.loading">
       <div class="list-tools"><span>{{ activeTab === 'invest' ? '已支付充值' : '账户消费' }}</span><button type="button" :disabled="current.loading" @click="loadPage(activeTab, true)">刷新</button></div>
       <div v-if="current.loading && !current.list.length" class="loading-line" role="status"><van-loading size="22">正在读取明细…</van-loading></div>
-      <div v-if="current.error" class="error-state" role="alert"><p>{{ current.error }}</p><van-button size="small" plain color="#07c160" :disabled="current.loading" @click="loadPage(activeTab, current.retryReset)">重新加载</van-button></div>
+      <div v-if="current.error" class="error-state" role="alert"><p>{{ current.error }}</p><van-button size="small" plain type="primary" :disabled="current.loading" @click="loadPage(activeTab, current.retryReset)">重新加载</van-button></div>
       <van-empty v-if="current.loaded && !current.loading && !current.error && !current.list.length" :description="activeTab === 'invest' ? '暂无已支付充值记录' : '暂无消费记录'" />
       <ul v-if="current.list.length" class="record-list">
         <li v-for="(item, index) in current.list" :key="item.id ?? `${item.createTime}-${index}`" class="record-item">
@@ -89,24 +89,218 @@ onMounted(() => loadPage(activeTab.value))
 </script>
 
 <style scoped>
-.fund-page { min-height: 100vh; background: #fff; color: #323233; padding-bottom: calc(24px + env(safe-area-inset-bottom)); box-sizing: border-box; --van-nav-bar-icon-color: #646566; --van-nav-bar-text-color: #646566; }
-.fund-tabs { display: flex; padding: 0 15px; border-bottom: 1px solid #ebedf0; }
-.fund-tabs button { position: relative; flex: 1; min-height: 52px; border: 0; background: none; color: #969799; font: inherit; font-size: 15px; cursor: pointer; }
-.fund-tabs button.active { color: #323233; font-weight: 600; }
-.fund-tabs button.active::after { content: ''; position: absolute; width: 20px; height: 2px; left: calc(50% - 10px); bottom: 0; background: #07c160; border-radius: 1px; }
-.fund-content { max-width: 600px; margin: 0 auto; padding: 0 15px; }
-.list-tools { display: flex; justify-content: space-between; align-items: center; margin: 12px 0; font-size: 12px; color: #969799; }
-.list-tools button, .list-footer button { min-height: 36px; padding: 6px 10px; border: 0; background: none; color: #079b4e; font: inherit; cursor: pointer; }
-.record-list { list-style: none; padding: 0; margin: 0; }
-.record-item { display: flex; justify-content: space-between; gap: 14px; padding: 14px 0 18px; margin-bottom: 10px; border-bottom: 1px solid #ebedf0; }
-.record-info { min-width: 0; flex: 1; }
-.record-info h2 { font-size: 14px; font-weight: 400; margin: 0 0 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.record-info time { font-size: 12px; color: #969799; }
-.record-amount { color: #ef8a26; font-size: 15px; font-weight: 600; text-align: right; overflow-wrap: anywhere; max-width: 45%; }
-.record-amount.expense { color: #646566; }
-.record-amount small { font-size: 12px; font-weight: 400; margin-left: 2px; }
-.loading-line, .list-footer { text-align: center; padding: 24px 0; color: #969799; font-size: 12px; }
-.error-state { text-align: center; padding: 20px 10px; color: #646566; font-size: 13px; line-height: 1.7; }
-button:focus-visible { outline: 2px solid #079b4e; outline-offset: 2px; border-radius: 4px; }
-button:disabled { cursor: not-allowed; opacity: 0.5; }
+.fund-page {
+  min-height: 100vh;
+  background: var(--ground);
+  color: var(--ink);
+  padding-bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  --van-nav-bar-icon-color: var(--ink-3);
+  --van-nav-bar-text-color: var(--ink-3);
+}
+
+.fund-tabs {
+  display: flex;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.fund-tabs button {
+  position: relative;
+  flex: 1;
+  min-height: 48px;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: var(--fs-body);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.fund-tabs button:hover {
+  color: var(--ink-2);
+}
+
+.fund-tabs button.active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.fund-tabs button.active::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 2px;
+  left: calc(50% - 12px);
+  bottom: 0;
+  background: var(--brand);
+  border-radius: 1px;
+}
+
+.fund-content {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: var(--sp-3);
+}
+
+.list-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: var(--sp-3) 0;
+  font-size: var(--fs-meta);
+  color: var(--ink-3);
+}
+
+.list-tools button,
+.list-footer button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  cursor: pointer;
+}
+
+.list-tools button:hover,
+.list-footer button:hover {
+  color: var(--brand-strong);
+}
+
+.record-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.record-item:last-child {
+  border-bottom: 0;
+}
+
+.record-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.record-info h2 {
+  font-size: var(--fs-body);
+  font-weight: 500;
+  margin: 0 0 6px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-info time {
+  font-size: var(--fs-meta);
+  color: var(--ink-4);
+}
+
+.record-amount {
+  color: var(--ink-2);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
+  max-width: 45%;
+}
+
+.record-amount.expense {
+  color: var(--paid);
+}
+
+.record-amount small {
+  font-size: var(--fs-meta);
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+.loading-line,
+.list-footer {
+  text-align: center;
+  padding: var(--sp-5) 0;
+  color: var(--ink-3);
+  font-size: var(--fs-meta);
+}
+
+.error-state {
+  text-align: center;
+  padding: var(--sp-5) var(--sp-3);
+  color: var(--ink-2);
+  font-size: var(--fs-body);
+  line-height: 1.7;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ============================================================
+   桌面端
+   ============================================================ */
+@media (min-width: 960px) {
+  .fund-page :deep(.van-nav-bar) {
+    background: transparent;
+  }
+
+  .fund-page :deep(.van-nav-bar__title) {
+    font-size: var(--fs-title);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .fund-tabs {
+    gap: var(--sp-4);
+    padding: 0 var(--sp-5);
+  }
+
+  .fund-tabs button {
+    flex: 0 0 auto;
+    min-height: 52px;
+    font-size: var(--fs-section);
+  }
+
+  .fund-content {
+    max-width: var(--shell-max);
+    padding: var(--sp-5);
+  }
+
+  .record-item {
+    padding: var(--sp-4) var(--sp-5);
+  }
+
+  .record-info h2 {
+    font-size: var(--fs-section);
+  }
+
+  .record-amount {
+    font-size: var(--fs-section);
+  }
+}
 </style>

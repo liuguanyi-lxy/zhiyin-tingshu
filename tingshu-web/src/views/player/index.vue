@@ -1,14 +1,18 @@
-<template>
+﻿<template>
   <div class="player-page">
     <van-nav-bar title="正在收听" left-arrow fixed placeholder @click-left="router.back()"><template #right><button type="button" class="nav-button" aria-label="查看专辑" @click="openAlbum"><van-icon name="description-o" size="20" /></button></template></van-nav-bar>
     <van-loading v-if="loading" class="player-loading">正在加载声音</van-loading>
     <van-empty v-else-if="loadError" image="network" :description="loadError"><van-button round size="small" @click="loadTrack">重新加载</van-button></van-empty>
     <template v-else-if="trackInfo">
       <div class="player-body">
-        <div class="cover-stage"><img class="cover" :src="trackInfo.coverUrl || album?.coverUrl" :alt="trackInfo.trackTitle" /><span class="cover-ring" aria-hidden="true"></span></div>
-        <h1>{{ trackInfo.trackTitle }}</h1>
-        <button type="button" class="album-name" @click="openAlbum">{{ album?.albumTitle || '查看所属专辑' }} <van-icon name="arrow" /></button>
-        <div class="progress-row"><time>{{ formatTime(progress) }}</time><van-slider v-model="progress" :max="duration || 1" :disabled="!duration" bar-height="3px" active-color="#ff0036" aria-label="播放进度" @drag-start="dragging = true" @drag-end="seek" @change="seek" /><time>{{ formatTime(duration) }}</time></div>
+        <div class="cover-stage">
+          <img v-if="coverUrl && !coverFailed" class="cover" :src="coverUrl" :alt="trackInfo.trackTitle" @error="coverFailed = true" />
+          <span v-else class="cover cover-fallback" aria-hidden="true">{{ (plainTitle(trackInfo.trackTitle) || '知').slice(0, 1) }}</span>
+          <span class="cover-ring" aria-hidden="true"></span>
+        </div>
+        <h1>{{ plainTitle(trackInfo.trackTitle) }}</h1>
+        <button type="button" class="album-name" @click="openAlbum">{{ plainTitle(album?.albumTitle) || '查看所属专辑' }} <van-icon name="arrow" /></button>
+        <div class="progress-row"><time>{{ formatTime(progress) }}</time><van-slider v-model="progress" :max="duration || 1" :disabled="!duration" bar-height="3px" active-color="#007aff" aria-label="播放进度" @drag-start="dragging = true" @drag-end="seek" @change="seek" /><time>{{ formatTime(duration) }}</time></div>
         <div class="controls">
           <button type="button" class="side-control" aria-label="打开声音列表" @click="playlistOpen = true"><van-icon name="bars" size="25" /></button>
           <button type="button" aria-label="上一集" :disabled="switching" @click="adjacent(-1)"><van-icon name="arrow-left" size="27" /></button>
@@ -18,12 +22,12 @@
         </div>
         <p v-if="audioError" class="audio-error" role="status">{{ audioError }}</p>
         <div class="playback-options"><label>倍速 <select v-model="rate" aria-label="播放速度" @change="applyRate"><option v-for="value in [0.75, 1, 1.25, 1.5, 2]" :key="value" :value="value">{{ value }}×</option></select></label><label><van-icon name="clock-o" /> 定时 <select v-model="sleepMinutes" aria-label="定时关闭" @change="setSleepTimer"><option :value="0">关闭</option><option v-for="value in [15, 30, 60]" :key="value" :value="value">{{ value }}分钟</option></select></label></div>
-        <div class="album-follow"><div><strong>{{ album?.nickname || album?.userInfoVo?.nickname || '订阅专辑' }}</strong><p>{{ Number(albumStats.subscribeStatNum || 0).toLocaleString() }} 位听友订阅</p></div><van-button round size="small" :plain="subscribed" color="#ff0036" :loading="subscribing" @click="toggleSubscribe">{{ subscribed ? '已订阅' : '+ 订阅' }}</van-button></div>
+        <div class="album-follow"><div><strong>{{ album?.nickname || album?.userInfoVo?.nickname || '订阅专辑' }}</strong><p>{{ Number(albumStats.subscribeStatNum || 0).toLocaleString() }} 位听友订阅</p></div><van-button round size="small" :plain="subscribed" color="#007aff" :loading="subscribing" @click="toggleSubscribe">{{ subscribed ? '已订阅' : '+ 订阅' }}</van-button></div>
       </div>
-      <van-tabs v-model:active="tab" color="#ff0036"><van-tab title="声音简介" name="intro"><p class="track-intro">{{ trackInfo.trackIntro || '这个声音还没有文字简介，戴上耳机开始收听吧。' }}</p></van-tab><van-tab title="听友评论" name="comments"><CommentPanel v-if="tab === 'comments'" :album-id="currentAlbumId" :track-id="trackId" /></van-tab></van-tabs>
+      <van-tabs v-model:active="tab" color="#007aff"><van-tab title="声音简介" name="intro"><p class="track-intro">{{ trackInfo.trackIntro || '这个声音还没有文字简介，戴上耳机开始收听吧。' }}</p></van-tab><van-tab title="听友评论" name="comments"><CommentPanel v-if="tab === 'comments'" :album-id="currentAlbumId" :track-id="trackId" /></van-tab></van-tabs>
       <audio ref="audio" :src="audioUrl" preload="metadata" @loadedmetadata="onMetadata" @timeupdate="onTimeUpdate" @play="onPlay" @pause="onPause" @ended="onEnded" @error="onAudioError"></audio>
     </template>
-    <van-popup v-model:show="playlistOpen" position="bottom" round :style="{ maxHeight: '75vh' }"><section class="playlist"><header><h2>专辑声音 <span>{{ playlistTotal }} 集</span></h2><button type="button" aria-label="关闭声音列表" @click="playlistOpen = false"><van-icon name="cross" /></button></header><van-loading v-if="playlistLoading" class="player-loading">加载声音列表</van-loading><van-empty v-else-if="playlistError" :description="playlistError"><van-button size="small" @click="loadPlaylist(playlistPage)">重试</van-button></van-empty><div v-else><button v-for="item in playlist" :key="item.trackId" type="button" class="playlist-track" :class="{ current: Number(item.trackId) === trackId }" @click="switchTrack(item)"><span>{{ item.orderNum }}</span><span>{{ item.trackTitle }}</span><van-icon :name="item.isShowPaidMark ? 'lock' : (Number(item.trackId) === trackId ? 'volume-o' : 'play-circle-o')" /></button><van-pagination v-if="playlistTotal > playlistSize" v-model="playlistPage" :total-items="playlistTotal" :items-per-page="playlistSize" :show-page-size="3" @change="loadPlaylist" /></div></section></van-popup>
+    <van-popup v-model:show="playlistOpen" position="bottom" round :style="{ maxHeight: '75vh' }"><section class="playlist"><header><h2>专辑声音 <span>{{ playlistTotal }} 集</span></h2><button type="button" aria-label="关闭声音列表" @click="playlistOpen = false"><van-icon name="cross" /></button></header><van-loading v-if="playlistLoading" class="player-loading">加载声音列表</van-loading><van-empty v-else-if="playlistError" :description="playlistError"><van-button size="small" @click="loadPlaylist(playlistPage)">重试</van-button></van-empty><div v-else><button v-for="item in playlist" :key="item.trackId" type="button" class="playlist-track" :class="{ current: Number(item.trackId) === trackId }" @click="switchTrack(item)"><span>{{ item.orderNum }}</span><span>{{ plainTitle(item.trackTitle) }}</span><van-icon :name="item.isShowPaidMark ? 'lock' : (Number(item.trackId) === trackId ? 'volume-o' : 'play-circle-o')" /></button><van-pagination v-if="playlistTotal > playlistSize" v-model="playlistPage" :total-items="playlistTotal" :items-per-page="playlistSize" :show-page-size="3" @change="loadPlaylist" /></div></section></van-popup>
   </div>
 </template>
 
@@ -33,6 +37,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { albumsApi } from '../../api/albums.js'
 import { userApi } from '../../api/user.js'
+import { plainTitle } from '../../utils/format.js'
 import CommentPanel from '../../components/CommentPanel.vue'
 
 const route = useRoute()
@@ -45,6 +50,8 @@ const currentAlbumId = ref(0)
 const audio = ref(null)
 const audioUrl = computed(() => trackInfo.value?.mediaUrl || '')
 const loading = ref(true)
+const coverFailed = ref(false)
+const coverUrl = computed(() => trackInfo.value?.coverUrl || album.value?.coverUrl || '')
 const loadError = ref('')
 const audioError = ref('')
 const playing = ref(false)
@@ -223,40 +230,100 @@ onBeforeUnmount(() => { reportProgress(); active = false; loadVersion++; listVer
 </script>
 
 <style scoped>
-.player-page { min-height: 100vh; background: #fff; padding-bottom: 24px; }
+.player-page { min-height: 100vh; background: var(--ground); padding-bottom: var(--sp-5); }
 .player-loading { padding: 48px 0; text-align: center; }
-.nav-button, .playlist header button { border: 0; background: none; color: #555; cursor: pointer; }
-.player-body { padding: 24px 24px 0; background: linear-gradient(#f9f5f0, #fff 75%); }
-.cover-stage { position: relative; width: 70%; max-width: 275px; margin: 0 auto; aspect-ratio: 1; }
-.cover { position: relative; z-index: 1; box-sizing: border-box; width: 100%; height: 100%; object-fit: cover; border: 1px solid #e2bb92; border-radius: 10px; background: #eee8e2; box-shadow: 0 12px 28px #4c2d1522; }
-.cover-ring { position: absolute; inset: 10px -12px -10px 12px; border: 1px solid #e2bb9260; border-radius: 10px; }
-h1 { margin: 28px 0 8px; font-size: 18px; font-weight: 600; line-height: 1.6; text-align: center; color: #333; }
-.album-name { display: block; border: 0; background: none; color: #9b8a79; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin: 0 auto; font-size: 12px; cursor: pointer; }
-.progress-row { display: flex; align-items: center; gap: 14px; margin: 28px 0 20px; }
-.progress-row time { font-size: 10px; color: #999; font-variant-numeric: tabular-nums; }
-.controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.controls button { display: flex; justify-content: center; align-items: center; flex-shrink: 0; border: 0; padding: 8px; background: none; color: #333; cursor: pointer; }
-.controls .play-button { width: 68px; height: 68px; border-radius: 50%; background: #ff0036; color: #fff; box-shadow: 0 5px 14px #ff003626; }
-.controls .side-control { color: #888; }
-.controls .selected { color: #e2bb92; }
+.nav-button, .playlist header button { border: 0; background: none; color: var(--ink-2); cursor: pointer; }
+
+/* 播放主区 */
+.player-body { padding: var(--sp-5) var(--sp-4) var(--sp-4); background: var(--surface); border-bottom: 1px solid var(--line); }
+.cover-stage { position: relative; width: 68%; max-width: 260px; margin: 0 auto; aspect-ratio: 1; }
+.cover { position: relative; z-index: 1; box-sizing: border-box; width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-lg); background: var(--line-soft); }
+.cover-fallback { display: grid; place-items: center; font-size: var(--fs-display); font-weight: 600; color: var(--ink-4); }
+.cover-ring { position: absolute; inset: 8px -10px -8px 10px; border: 1px solid var(--line); border-radius: var(--r-lg); }
+h1 { margin: var(--sp-4) 0 6px; font-size: var(--fs-title); font-weight: 600; line-height: 1.5; text-align: center; color: var(--ink); }
+.album-name { display: block; border: 0; background: none; color: var(--ink-3); max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin: 0 auto; font-size: var(--fs-meta); cursor: pointer; }
+.album-name:hover { color: var(--brand); }
+
+/* 进度条 */
+.progress-row { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-5) 0 var(--sp-4); }
+.progress-row time { font-size: var(--fs-micro); color: var(--ink-4); font-variant-numeric: tabular-nums; }
+
+/* 播放控制 */
+.controls { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.controls button { display: flex; justify-content: center; align-items: center; flex-shrink: 0; border: 0; padding: var(--sp-2); border-radius: var(--r-pill); background: none; color: var(--ink); cursor: pointer; transition: background 0.15s ease; }
+.controls button:hover { background: var(--ground); }
+.controls .play-button { width: 64px; height: 64px; background: var(--brand); color: #fff; }
+.controls .play-button:hover { background: var(--brand-strong); }
+.controls .side-control { color: var(--ink-3); }
+.controls .selected { color: var(--brand); }
 .controls button:disabled { opacity: .4; }
-.audio-error { text-align: center; color: #b88854; font-size: 12px; line-height: 1.7; }
-.playback-options { display: flex; justify-content: space-around; margin: 22px 0; color: #999; font-size: 11px; }
+.audio-error { text-align: center; color: var(--paid); font-size: var(--fs-meta); line-height: 1.7; margin: var(--sp-3) 0 0; }
+
+/* 倍速 / 定时 */
+.playback-options { display: flex; justify-content: space-around; margin: var(--sp-4) 0 var(--sp-3); color: var(--ink-3); font-size: var(--fs-meta); }
 .playback-options label { display: flex; align-items: center; gap: 5px; }
-.playback-options select { border: 0; color: #777; background: transparent; padding: 4px 0; font-size: 11px; }
-.album-follow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0 20px; border-top: 1px solid #eee9e5; }
-.album-follow strong { color: #555; font-size: 13px; font-weight: 500; }
-.album-follow p { margin: 5px 0 0; color: #aaa; font-size: 11px; }
-.track-intro { padding: 8px 20px 20px; font-size: 13px; line-height: 1.9; color: #777; white-space: pre-wrap; }
-.playlist { padding: 18px 16px 28px; }
-.playlist header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.playlist h2 { font-size: 16px; margin: 0; }
-.playlist h2 span { font-size: 12px; color: #999; font-weight: 400; margin-left: 6px; }
-.playlist-track { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; border-bottom: 1px solid #f5f5f5; background: #fff; padding: 16px 4px; text-align: left; font-size: 13px; color: #555; }
-.playlist-track span:first-child { width: 24px; flex-shrink: 0; text-align: center; color: #aaa; }
+.playback-options select { border: 1px solid var(--line); color: var(--ink-2); background: var(--surface); padding: 4px 6px; border-radius: var(--r-sm); font-size: var(--fs-micro); }
+
+/* 订阅 */
+.album-follow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-4) 0 0; border-top: 1px solid var(--line-soft); }
+.album-follow strong { color: var(--ink); font-size: var(--fs-body); font-weight: 500; }
+.album-follow p { margin: 4px 0 0; color: var(--ink-4); font-size: var(--fs-micro); }
+
+/* 简介与评论 */
+.player-page :deep(.van-tabs) { background: transparent; }
+.track-intro { padding: var(--sp-4); margin: 0; font-size: var(--fs-body); line-height: 1.85; color: var(--ink-2); white-space: pre-wrap; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); }
+
+/* 播放列表弹层 */
+.playlist { padding: var(--sp-4) var(--sp-4) var(--sp-6); }
+.playlist header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-3); }
+.playlist h2 { font-size: var(--fs-section); margin: 0; font-weight: 600; }
+.playlist h2 span { font-size: var(--fs-meta); color: var(--ink-4); font-weight: 400; margin-left: 6px; }
+.playlist-track { display: flex; align-items: center; gap: var(--sp-2); width: 100%; border: 0; border-bottom: 1px solid var(--line-soft); background: var(--surface); padding: var(--sp-3) var(--sp-1); text-align: left; font-size: var(--fs-body); color: var(--ink); }
+.playlist-track span:first-child { width: 24px; flex-shrink: 0; text-align: center; color: var(--ink-4); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
 .playlist-track span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.playlist-track.current { color: #ff0036; background: #fff8f9; }
-.playlist :deep(.van-pagination) { margin-top: 20px; }
-button:focus-visible, select:focus-visible { outline: 2px solid #ff0036; outline-offset: 3px; }
-@media (max-width: 350px) { .player-body { padding-inline: 18px; } .controls { gap: 6px; } }
+.playlist-track.current { color: var(--brand); background: var(--brand-soft); }
+.playlist :deep(.van-pagination) { margin-top: var(--sp-4); }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+
+/* ============================================================
+   桌面端：封面在左，控制区在右
+   ============================================================ */
+@media (min-width: 960px) {
+  .player-page :deep(.van-nav-bar) {
+    max-width: none;
+    left: var(--sidebar-w);
+    right: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .player-page :deep(.van-nav-bar__title) {
+    font-size: var(--fs-section);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .player-body {
+    max-width: var(--shell-max);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: var(--sp-6);
+    align-items: center;
+    padding: var(--sp-6) var(--sp-5);
+    border-bottom: 0;
+  }
+
+  .cover-stage { grid-row: span 1; width: 100%; max-width: 320px; }
+  .cover { border-radius: var(--r-lg); }
+  .cover-ring { display: none; }
+
+  .player-body > h1 { text-align: left; margin-top: 0; }
+  .album-name { margin: 0; }
+
+  .player-page :deep(.van-tabs) { max-width: var(--shell-max); margin: 0 auto; padding: 0 var(--sp-5); }
+  .track-intro { border-radius: var(--r-lg); }
+}
+
+@media (max-width: 350px) { .player-body { padding-inline: var(--sp-3); } .controls { gap: 4px; } }
 </style>

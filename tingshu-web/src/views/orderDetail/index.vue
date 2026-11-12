@@ -4,43 +4,59 @@
     <div v-if="loading" class="loading-state" role="status"><van-loading vertical>正在加载订单</van-loading></div>
     <section v-else-if="error" class="state-panel" role="alert">
       <van-empty image="error" :description="error" />
-      <van-button color="#EE0A25" plain @click="loadOrder">重新加载</van-button>
+      <van-button type="primary" plain @click="loadOrder">重新加载</van-button>
       <van-button plain @click="router.replace('/order')">我的订单</van-button>
     </section>
     <template v-else-if="order">
       <header class="status-banner">
-        <h1>{{ orderStatusName(order) }}</h1>
-        <p>{{ statusDescription }}</p>
+        <span
+          class="tag status-tag"
+          :class="{
+            'status-paid': order.orderStatus === ORDER_STATUS.Paid,
+            'status-unpaid': order.orderStatus === ORDER_STATUS.Unpaid,
+            'status-cancelled': order.orderStatus === ORDER_STATUS.Cancelled
+          }"
+        >{{ orderStatusName(order) }}</span>
+        <h1>{{ statusDescription }}</h1>
       </header>
-      <section class="order-card">
-        <div class="goods-list">
-          <article v-for="(item, index) in order.orderDetailList || []" :key="item.id || `${item.itemId}-${index}`" class="goods">
-            <van-image width="75" height="75" fit="cover" radius="15" :src="item.itemUrl" alt="商品封面" />
-            <div><h2>{{ item.itemName }}</h2><strong>￥{{ formatAmount(item.itemPrice) }}</strong><span class="quantity">× 1</span></div>
-          </article>
-          <van-empty v-if="!order.orderDetailList?.length" description="暂无商品明细，请刷新确认" image-size="70" />
-        </div>
-        <dl class="order-meta">
-          <div><dt>商品总价</dt><dd>￥{{ formatAmount(order.originalAmount) }}</dd></div>
-          <div v-if="Number(order.derateAmount) > 0"><dt>优惠减免</dt><dd>-￥{{ formatAmount(order.derateAmount) }}</dd></div>
-          <div><dt>{{ order.orderStatus === ORDER_STATUS.Paid ? '实付款' : '应付款' }}</dt><dd class="amount">￥{{ formatAmount(order.orderAmount) }}</dd></div>
-          <div><dt>订单号</dt><dd>{{ order.orderNo }}</dd></div>
-          <div><dt>付款方式</dt><dd>{{ order.payWayName || payWayName }}</dd></div>
-          <div><dt>下单时间</dt><dd>{{ order.createTime || '—' }}</dd></div>
-        </dl>
-        <div class="detail-actions">
-          <template v-if="order.orderStatus === ORDER_STATUS.Unpaid">
-            <p class="channel-warning">{{ NATIVE_PAYMENT_NOTICE }}</p>
-            <van-button color="#EE0A25" block :disabled="order.payWay !== PAY_WAY.WeChat" @click="openPayment">选择支付方式</van-button>
-            <p v-if="order.payWay !== PAY_WAY.WeChat" class="channel-warning">{{ BALANCE_PAYMENT_BLOCKER }}</p>
-            <van-button plain block :loading="checking" :disabled="checking" @click="verifyPayment">已付款，核验状态</van-button>
-          </template>
-          <van-button v-else-if="order.orderStatus === ORDER_STATUS.Paid" color="#EE0A25" plain block @click="showResult">查看支付结果</van-button>
-          <p v-else class="muted">{{ order.orderStatus === ORDER_STATUS.Cancelled ? '订单已取消，不能继续支付。' : '订单状态尚未确认，请刷新后再操作。' }}</p>
-          <van-button plain block @click="loadOrder">刷新订单</van-button>
-          <p v-if="checkError" role="alert" class="inline-error">{{ checkError }}</p>
-        </div>
-      </section>
+      <div class="detail-body">
+        <section class="order-card">
+          <h2 class="section-title">商品明细</h2>
+          <div class="goods-list">
+            <article v-for="(item, index) in order.orderDetailList || []" :key="item.id || `${item.itemId}-${index}`" class="goods">
+              <van-image width="75" height="75" fit="cover" radius="6" :src="item.itemUrl" alt="商品封面" />
+              <div class="goods-info">
+                <h3>{{ item.itemName }}</h3>
+                <p class="goods-price"><strong class="num">￥{{ formatAmount(item.itemPrice) }}</strong><span class="quantity">× 1</span></p>
+              </div>
+            </article>
+            <van-empty v-if="!order.orderDetailList?.length" description="暂无商品明细，请刷新确认" image-size="70" />
+          </div>
+        </section>
+        <section class="order-card">
+          <h2 class="section-title">订单信息</h2>
+          <dl class="order-meta">
+            <div><dt>商品总价</dt><dd class="num">￥{{ formatAmount(order.originalAmount) }}</dd></div>
+            <div v-if="Number(order.derateAmount) > 0"><dt>优惠减免</dt><dd class="num">-￥{{ formatAmount(order.derateAmount) }}</dd></div>
+            <div><dt>{{ order.orderStatus === ORDER_STATUS.Paid ? '实付款' : '应付款' }}</dt><dd class="amount num">￥{{ formatAmount(order.orderAmount) }}</dd></div>
+            <div><dt>订单号</dt><dd>{{ order.orderNo }}</dd></div>
+            <div><dt>付款方式</dt><dd>{{ order.payWayName || payWayName }}</dd></div>
+            <div><dt>下单时间</dt><dd>{{ order.createTime || '—' }}</dd></div>
+          </dl>
+          <div class="detail-actions">
+            <template v-if="order.orderStatus === ORDER_STATUS.Unpaid">
+              <p class="channel-warning">{{ NATIVE_PAYMENT_NOTICE }}</p>
+              <van-button type="primary" block :disabled="order.payWay !== PAY_WAY.WeChat" @click="openPayment">选择支付方式</van-button>
+              <p v-if="order.payWay !== PAY_WAY.WeChat" class="channel-warning">{{ BALANCE_PAYMENT_BLOCKER }}</p>
+              <van-button plain block :loading="checking" :disabled="checking" @click="verifyPayment">已付款，核验状态</van-button>
+            </template>
+            <van-button v-else-if="order.orderStatus === ORDER_STATUS.Paid" type="primary" plain block @click="showResult">查看支付结果</van-button>
+            <p v-else class="muted">{{ order.orderStatus === ORDER_STATUS.Cancelled ? '订单已取消，不能继续支付。' : '订单状态尚未确认，请刷新后再操作。' }}</p>
+            <van-button plain block @click="loadOrder">刷新订单</van-button>
+            <p v-if="checkError" role="alert" class="inline-error">{{ checkError }}</p>
+          </div>
+        </section>
+      </div>
     </template>
 
     <van-popup v-model:show="showPayment" position="bottom" round closeable :close-on-click-overlay="false" class="payment-popup">
@@ -49,7 +65,7 @@
         <p class="payment-total">应付 <strong>￥{{ formatAmount(order?.orderAmount) }}</strong></p>
         <van-radio-group v-model="payChoice" :disabled="phase === 'creating' || phase === 'polling'">
           <van-cell title="微信扫码支付" label="需另一台设备使用微信扫描付款码" clickable @click="selectNative">
-            <template #right-icon><van-radio :name="PAY_WAY.WeChat" checked-color="#EE0A25" /></template>
+            <template #right-icon><van-radio :name="PAY_WAY.WeChat" checked-color="#007aff" /></template>
           </van-cell>
           <van-cell title="账户余额" :label="balanceLoading ? '余额读取中…' : `可用余额 ￥${formatAmount(balance)} · 暂不可用`">
             <template #right-icon><van-radio :name="PAY_WAY.Balance" disabled /></template>
@@ -66,7 +82,7 @@
           <van-loading size="16">等待微信确认支付</van-loading>
         </div>
         <div v-if="payError" class="inline-error" role="alert">{{ payError }}</div>
-        <van-button v-if="phase !== 'polling'" color="#EE0A25" block :loading="phase === 'creating'" :disabled="!NATIVE_ENDPOINT_AVAILABLE || phase === 'creating' || nativeRequestInFlight || checking" @click="createNativePayment">
+        <van-button v-if="phase !== 'polling'" type="primary" block :loading="phase === 'creating'" :disabled="!NATIVE_ENDPOINT_AVAILABLE || phase === 'creating' || nativeRequestInFlight || checking" @click="createNativePayment">
           {{ !NATIVE_ENDPOINT_AVAILABLE ? '扫码支付暂不可用' : phase === 'expired' ? '重新获取付款码' : '获取微信付款码' }}
         </van-button>
         <van-button plain block @click="closePayment">关闭</van-button>
@@ -320,39 +336,299 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.detail-page { min-height: 100vh; background: #F8F8F8; color: #373737; padding-bottom: 30px; font-size: 14px; }
-.loading-state { padding: 80px 0; }
-.state-panel { text-align: center; }
-.state-panel :deep(.van-button) { margin: 0 5px; }
-.status-banner { background: #ED6A0C; color: #fff; padding: 40px 27.5px 45px; }
-.status-banner h1 { margin: 0 0 12px; font-size: 24px; line-height: 34px; font-weight: 600; }
-.status-banner p { font-size: 13px; line-height: 22px; margin: 0; }
-.order-card { position: relative; margin: -20px 12.5px 0; padding: 15px; border-radius: 10px; background: #fff; }
-.goods-list { max-height: 310px; overflow-y: auto; overscroll-behavior: contain; padding: 5px; }
-.goods { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.goods :deep(.van-image) { flex-shrink: 0; }
-.goods > div { flex: 1; min-width: 0; }
-.goods h2 { font-size: 14px; line-height: 22px; margin: 0 0 8px; font-weight: 500; overflow-wrap: anywhere; }
-.goods strong { font-size: 14px; font-weight: 500; }
-.quantity { float: right; color: #969696; font-size: 12px; }
-.order-meta { margin: 10px 0 0; }
-.order-meta > div { display: flex; justify-content: space-between; gap: 18px; padding: 15px 0; border-bottom: 0.5px solid #e5e5e5; align-items: baseline; }
-.order-meta dt { flex-shrink: 0; }
-.order-meta dd { margin: 0; text-align: right; color: #969696; overflow-wrap: anywhere; min-width: 0; }
-.order-meta .amount { color: #EE0A25; font-weight: 600; font-size: 18px; }
-.detail-actions { margin: 20px 0 5px; }
-.detail-actions :deep(.van-button) + :deep(.van-button) { margin-top: 10px; }
-.muted { color: #969696; font-size: 12px; line-height: 1.8; }
-.channel-warning { color: #ED6A0C; font-size: 12px; line-height: 1.8; margin: 10px 0 15px; }
-.inline-error { font-size: 13px; line-height: 1.8; color: #EE0A25; margin: 12px 0; overflow-wrap: anywhere; }
-.payment-popup { left: 50%; transform: translateX(-50%); max-width: 480px; width: 100%; }
-.payment-content { padding: 22px 20px calc(20px + env(safe-area-inset-bottom)); max-height: 85vh; overflow-y: auto; }
-.payment-content > h2 { text-align: center; margin: 0 24px 15px; font-size: 18px; font-weight: 600; }
-.payment-total { text-align: center; margin: 0 0 15px; }
-.payment-total strong { color: #EE0A25; font-size: 22px; }
-.payment-content :deep(.van-cell) { padding-left: 0; padding-right: 0; }
-.payment-content > :deep(.van-button) { margin-top: 10px; }
-.qr-state { text-align: center; padding: 10px 0; font-size: 14px; }
-.qr-image { display: block; margin: 0 auto; max-width: 100%; height: auto; background: #fff; }
-.qr-state :deep(.van-loading) { margin: 12px 0; }
+.detail-page {
+  min-height: 100vh;
+  background: var(--ground);
+  color: var(--ink);
+  padding-bottom: var(--sp-6);
+  font-size: var(--fs-body);
+}
+
+.loading-state {
+  padding: 80px 0;
+}
+
+.state-panel {
+  text-align: center;
+}
+
+.state-panel :deep(.van-button) {
+  margin: 0 5px;
+}
+
+.status-banner {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: var(--sp-5) var(--sp-4);
+}
+
+.status-tag {
+  margin-bottom: var(--sp-2);
+}
+
+.status-tag.status-paid {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.status-tag.status-unpaid {
+  color: var(--paid);
+  background: var(--paid-soft);
+}
+
+.status-tag.status-cancelled {
+  color: var(--ink-3);
+  background: var(--line-soft);
+}
+
+.status-banner h1 {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.detail-body {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+
+.order-card {
+  position: relative;
+  padding: var(--sp-4);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.order-card > .section-title {
+  margin-bottom: var(--sp-3);
+}
+
+.goods-list {
+  max-height: 340px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.goods {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.goods:last-child {
+  margin-bottom: 0;
+}
+
+.goods :deep(.van-image) {
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+}
+
+.goods-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.goods-info h3 {
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  margin: 0 0 var(--sp-2);
+  font-weight: 500;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.goods-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin: 0;
+}
+
+.goods-price strong {
+  font-size: var(--fs-body);
+  color: var(--ink);
+}
+
+.quantity {
+  color: var(--ink-3);
+  font-size: var(--fs-meta);
+}
+
+.order-meta {
+  margin: 0;
+}
+
+.order-meta > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line-soft);
+  align-items: baseline;
+}
+
+.order-meta > div:last-child {
+  border-bottom: 0;
+}
+
+.order-meta dt {
+  flex-shrink: 0;
+  color: var(--ink-3);
+  font-size: var(--fs-body);
+}
+
+.order-meta dd {
+  margin: 0;
+  text-align: right;
+  color: var(--ink-2);
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.order-meta .amount {
+  color: var(--paid);
+  font-weight: 600;
+  font-size: var(--fs-title);
+}
+
+.detail-actions {
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line-soft);
+}
+
+.detail-actions :deep(.van-button) + :deep(.van-button) {
+  margin-top: var(--sp-2);
+}
+
+.muted {
+  color: var(--ink-3);
+  font-size: var(--fs-meta);
+  line-height: 1.8;
+}
+
+.channel-warning {
+  color: var(--vip);
+  font-size: var(--fs-meta);
+  line-height: 1.8;
+  margin: 0 0 var(--sp-3);
+}
+
+.inline-error {
+  font-size: var(--fs-body);
+  line-height: 1.8;
+  color: var(--paid);
+  margin: var(--sp-3) 0;
+  overflow-wrap: anywhere;
+}
+
+.payment-popup {
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 480px;
+  width: 100%;
+}
+
+.payment-content {
+  padding: var(--sp-5) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom));
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.payment-content > h2 {
+  text-align: center;
+  margin: 0 var(--sp-5) var(--sp-3);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.payment-total {
+  text-align: center;
+  margin: 0 0 var(--sp-4);
+  color: var(--ink-2);
+}
+
+.payment-total strong {
+  color: var(--paid);
+  font-size: var(--fs-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.payment-content :deep(.van-cell) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.payment-content > :deep(.van-button) {
+  margin-top: var(--sp-2);
+}
+
+.qr-state {
+  text-align: center;
+  padding: var(--sp-3) 0;
+  font-size: var(--fs-body);
+}
+
+.qr-image {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+.qr-state :deep(.van-loading) {
+  margin: var(--sp-3) 0;
+}
+
+/* ============================================================
+   桌面端
+   ============================================================ */
+@media (min-width: 960px) {
+  .detail-page :deep(.van-nav-bar) {
+    background: transparent;
+  }
+
+  .detail-page :deep(.van-nav-bar__title) {
+    font-size: var(--fs-title);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .status-banner {
+    padding: var(--sp-5);
+  }
+
+  .status-banner h1 {
+    font-size: var(--fs-display);
+  }
+
+  .detail-body {
+    max-width: var(--shell-max);
+    margin: 0 auto;
+    padding: var(--sp-5);
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: var(--sp-4);
+    align-items: start;
+  }
+
+  .goods-list {
+    max-height: none;
+  }
+
+  .order-card {
+    padding: var(--sp-5);
+  }
+}
 </style>

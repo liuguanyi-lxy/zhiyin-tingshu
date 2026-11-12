@@ -2,7 +2,7 @@
   <main class="album-form-page">
     <van-nav-bar :title="editId ? '修改专辑' : '创建专辑'" left-arrow @click-left="cancelForm" />
     <van-skeleton v-if="initialLoading" title :row="8" class="page-loading" />
-    <van-empty v-else-if="pageError" image="error" :description="pageError"><van-button size="small" color="#008aff" @click="initialize">重新加载</van-button></van-empty>
+    <van-empty v-else-if="pageError" image="error" :description="pageError"><van-button size="small" type="primary" @click="initialize">重新加载</van-button></van-empty>
     <van-form v-else :disabled="saving" :scroll-to-error="true" :show-error-message="true" @submit="submit" @failed="onValidationFailed">
       <section class="form-panel">
         <p class="section-caption">专辑信息 <span>带 * 为必填项</span></p>
@@ -34,21 +34,21 @@
               <div v-for="attribute in attributes" :key="attribute.id" class="attribute-group">
                 <p>{{ attribute.attributeName }}</p>
                 <van-radio-group :disabled="saving" v-model="selections[attribute.id]" direction="horizontal">
-                  <van-radio v-for="value in attribute.attributeValueList" :key="value.id" :name="String(value.id)" checked-color="#008aff">{{ value.valueName }}</van-radio>
+                  <van-radio v-for="value in attribute.attributeValueList" :key="value.id" :name="String(value.id)" checked-color="#007aff">{{ value.valueName }}</van-radio>
                 </van-radio-group>
               </div>
             </div>
           </template>
         </van-field>
         <van-field v-model="form.albumIntro" name="albumIntro" label="专辑简介" type="textarea" rows="4" autosize placeholder="介绍这张专辑的内容" required :rules="[{ validator: value => !!value.trim(), message: '请填写专辑简介' }]" />
-        <van-field name="isOpen" label="设为私密"><template #input><van-switch :model-value="form.isOpen === '0'" size="24" active-color="#008aff" :disabled="saving" @update:model-value="form.isOpen = $event ? '0' : '1'" /></template></van-field>
+        <van-field name="isOpen" label="设为私密"><template #input><van-switch :model-value="form.isOpen === '0'" size="24" active-color="#007aff" :disabled="saving" @update:model-value="form.isOpen = $event ? '0' : '1'" /></template></van-field>
         <p class="privacy-note">{{ form.isOpen === '0' ? '私密专辑不展示在听众端检索中。' : '公开提交会触发专辑上架，请确认内容及版权。' }}</p>
       </section>
       <section class="form-panel">
         <p class="section-caption">付费设置</p>
-        <van-field name="payType" label="付费类型" required><template #input><van-radio-group :disabled="saving" v-model="form.payType" direction="horizontal"><van-radio name="0101" checked-color="#008aff">免费</van-radio><van-radio name="0102" checked-color="#008aff">VIP 免费</van-radio><van-radio name="0103" checked-color="#008aff">付费</van-radio></van-radio-group></template></van-field>
+        <van-field name="payType" label="付费类型" required><template #input><van-radio-group :disabled="saving" v-model="form.payType" direction="horizontal"><van-radio name="0101" checked-color="#007aff">免费</van-radio><van-radio name="0102" checked-color="#007aff">VIP 免费</van-radio><van-radio name="0103" checked-color="#007aff">付费</van-radio></van-radio-group></template></van-field>
         <template v-if="form.payType !== '0101'">
-          <van-field name="priceType" label="价格类型" required><template #input><van-radio-group :disabled="saving" v-model="form.priceType" direction="horizontal"><van-radio name="0201" checked-color="#008aff">单集</van-radio><van-radio name="0202" checked-color="#008aff">整专辑</van-radio></van-radio-group></template></van-field>
+          <van-field name="priceType" label="价格类型" required><template #input><van-radio-group :disabled="saving" v-model="form.priceType" direction="horizontal"><van-radio name="0201" checked-color="#007aff">单集</van-radio><van-radio name="0202" checked-color="#007aff">整专辑</van-radio></van-radio-group></template></van-field>
           <van-field v-model="form.price" name="price" label="专辑原价" inputmode="decimal" placeholder="输入金额，单位元" required :rules="[{ validator: validPrice, message: '请填写大于 0 的价格，最多两位小数' }]"><template #right-icon>元</template></van-field>
           <van-field v-model="form.discount" name="discount" label="专辑折扣" inputmode="decimal" placeholder="0.1～9.9，不打折填 -1" required :rules="[{ validator: validDiscount, message: '折扣为 0.1～9.9，不打折填 -1' }]" />
           <van-field v-model="form.vipDiscount" name="vipDiscount" label="会员折扣" inputmode="decimal" placeholder="0.1～9.9，不打折填 -1" required :rules="[{ validator: validDiscount, message: '会员折扣为 0.1～9.9，不打折填 -1' }]" />
@@ -56,10 +56,10 @@
         </template>
       </section>
       <p v-if="submitError" class="submit-error" role="alert">{{ submitError }}</p>
-      <div class="submit-actions"><van-button native-type="button" :disabled="saving" @click="cancelForm">取消</van-button><van-button native-type="submit" color="#008aff" :loading="saving" :disabled="coverUploading || categoryLoading || attributeLoading || !!categoryError || !!attributeError || !attributes.length">{{ editId ? '保存修改' : '提交专辑' }}</van-button></div>
+      <div class="submit-actions"><van-button native-type="button" :disabled="saving" @click="cancelForm">取消</van-button><van-button native-type="submit" color="#007aff" :loading="saving" :disabled="coverUploading || categoryLoading || attributeLoading || !!categoryError || !!attributeError || !attributes.length">{{ editId ? '保存修改' : '提交专辑' }}</van-button></div>
     </van-form>
     <van-popup v-model:show="categoryVisible" position="bottom" round class="category-popup">
-      <van-cascader v-model="categoryChoice" title="请选择专辑分类" :options="categories" :field-names="{ text: 'categoryName', value: 'categoryId', children: 'categoryChild' }" active-color="#008aff" @close="categoryVisible = false" @finish="finishCategory" />
+      <van-cascader v-model="categoryChoice" title="请选择专辑分类" :options="categories" :field-names="{ text: 'categoryName', value: 'categoryId', children: 'categoryChild' }" active-color="#007aff" @close="categoryVisible = false" @finish="finishCategory" />
       <div v-if="categoryError || !categories.length" class="dependency">{{ categoryError || '暂无可用分类' }} <button type="button" @click="reloadCategories">重新加载分类</button></div>
     </van-popup>
   </main>
@@ -186,7 +186,7 @@ async function uploadCover(event) {
   finally { if (alive) coverUploading.value = false }
 }
 async function cancelCoverUpload() {
-  try { await showConfirmDialog({ title: '取消封面上传？', message: '将停止本次上传，已保存的封面不会更改。', confirmButtonColor: '#008aff' }); coverController?.abort() } catch { /* 保持上传 */ }
+  try { await showConfirmDialog({ title: '取消封面上传？', message: '将停止本次上传，已保存的封面不会更改。', confirmButtonColor: 'var(--brand)' }); coverController?.abort() } catch { /* 保持上传 */ }
 }
 async function initialize() {
   const version = ++generation
@@ -225,7 +225,7 @@ async function submit() {
   submitError.value = ''
   if (!attributesValid() || categoryError.value) { submitError.value = '分类及标签未就绪，请重试加载后完整选择。'; return }
   if (form.isOpen === '1') {
-    try { await showConfirmDialog({ title: editId.value ? '保存公开专辑？' : '提交并公开专辑？', message: '公开专辑将展示给听众，并可能触发上架。请确认内容和付费设置。', confirmButtonColor: '#008aff' }) }
+    try { await showConfirmDialog({ title: editId.value ? '保存公开专辑？' : '提交并公开专辑？', message: '公开专辑将展示给听众，并可能触发上架。请确认内容和付费设置。', confirmButtonColor: 'var(--brand)' }) }
     catch { return }
   }
   saving.value = true
@@ -245,7 +245,7 @@ async function confirmLeave(force = false) {
   if (saving.value) return false
   if (!force && !dirty.value && !coverUploading.value) return true
   try {
-    await showConfirmDialog({ title: coverUploading.value ? '停止上传并离开？' : '放弃本次编辑？', message: '尚未提交的修改不会保存。已上传但未提交的封面也不会自动成为作品。', confirmButtonColor: '#008aff' })
+    await showConfirmDialog({ title: coverUploading.value ? '停止上传并离开？' : '放弃本次编辑？', message: '尚未提交的修改不会保存。已上传但未提交的封面也不会自动成为作品。', confirmButtonColor: 'var(--brand)' })
     coverController?.abort()
     return true
   } catch { return false }
@@ -260,40 +260,40 @@ watch(editId, initialize, { immediate: true })
 </script>
 
 <style scoped>
-.album-form-page { --van-primary-color: #008aff; --van-field-label-width: 85px; color: #333; min-height: 100vh; background: #f8f8f8; padding-bottom: env(safe-area-inset-bottom); }
-.album-form-page :deep(.van-nav-bar .van-icon) { color: #008aff; }
+.album-form-page { --van-primary-color: var(--brand); --van-field-label-width: 85px; color: var(--ink); min-height: 100vh; background: var(--ground); padding-bottom: env(safe-area-inset-bottom); }
+.album-form-page :deep(.van-nav-bar .van-icon) { color: var(--brand); }
 .page-loading { padding: 25px 15px; }
-.form-panel { background: white; padding: 5px 0 10px; margin-bottom: 10px; }
+.form-panel { background: var(--surface); padding: 5px 0 10px; margin-bottom: 10px; }
 .section-caption { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 600; margin: 15px; }
-.section-caption span { color: #999; font-size: 11px; font-weight: 400; }
+.section-caption span { color: var(--ink-4); font-size: 11px; font-weight: 400; }
 .album-form-page :deep(.van-field) { padding: 14px 15px; align-items: flex-start; }
-.album-form-page :deep(.van-field__label) { color: #333; }
+.album-form-page :deep(.van-field__label) { color: var(--ink); }
 .album-form-page :deep(.van-radio-group--horizontal) { gap: 10px 15px; flex-wrap: wrap; }
 .album-form-page :deep(.van-radio--horizontal) { margin: 0; font-size: 12px; }
 .upload-area { width: 100%; }
-.cover-picker { display: flex; position: relative; width: 90px; height: 90px; justify-content: center; align-items: center; border-radius: 5px; background: #f8f8f8; border: .5px dashed #ccc; overflow: hidden; color: #999; cursor: pointer; }
+.cover-picker { display: flex; position: relative; width: 90px; height: 90px; justify-content: center; align-items: center; border-radius: 5px; background: var(--ground); border: .5px dashed var(--line); overflow: hidden; color: var(--ink-4); cursor: pointer; }
 .cover-picker > span { display: flex; align-items: center; flex-direction: column; gap: 8px; }
 .cover-picker small { font-size: 11px; }
 .cover-picker input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-.cover-picker:focus-within { outline: 2px solid #008aff; }
+.cover-picker:focus-within { outline: 2px solid var(--brand); }
 .cover-picker.disabled { opacity: .6; }
-.upload-copy p { margin: 6px 0; color: #999; font-size: 10px; line-height: 1.5; }
-.text-button, .dependency button, .upload-progress button, .field-error button { padding: 4px 0; border: 0; color: #008aff; background: none; font-size: 12px; }
-.upload-progress { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 11px; color: #008aff; margin-top: 8px; }
-.field-error { color: #b42318; font-size: 12px; line-height: 1.6; margin: 6px 0 0; overflow-wrap: anywhere; }
+.upload-copy p { margin: 6px 0; color: var(--ink-4); font-size: 10px; line-height: 1.5; }
+.text-button, .dependency button, .upload-progress button, .field-error button { padding: 4px 0; border: 0; color: var(--brand); background: none; font-size: 12px; }
+.upload-progress { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--brand); margin-top: 8px; }
+.field-error { color: var(--paid); font-size: 12px; line-height: 1.6; margin: 6px 0 0; overflow-wrap: anywhere; }
 .attributes { min-width: 0; width: 100%; }
-.muted { margin: 0; font-size: 12px; color: #999; line-height: 1.7; }
+.muted { margin: 0; font-size: 12px; color: var(--ink-4); line-height: 1.7; }
 .attribute-group { margin: 0 0 16px; }
 .attribute-group:last-child { margin-bottom: 0; }
-.attribute-group p { margin: 0 0 10px; color: #666; font-size: 12px; }
-.privacy-note { margin: 4px 15px 6px 100px; color: #999; font-size: 11px; line-height: 1.7; }
-.dependency { margin: 4px 15px 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: #999; font-size: 12px; }
-.error { color: #b42318; }
-.submit-error { margin: 15px; padding: 12px; border-radius: 5px; background: #fff2f0; color: #b42318; font-size: 13px; line-height: 1.7; }
+.attribute-group p { margin: 0 0 10px; color: var(--ink-3); font-size: 12px; }
+.privacy-note { margin: 4px 15px 6px 100px; color: var(--ink-4); font-size: 11px; line-height: 1.7; }
+.dependency { margin: 4px 15px 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--ink-4); font-size: 12px; }
+.error { color: var(--paid); }
+.submit-error { margin: 15px; padding: 12px; border-radius: 5px; background: var(--paid-soft); color: var(--paid); font-size: 13px; line-height: 1.7; }
 .submit-actions { display: flex; gap: 12px; padding: 15px 15px 30px; }
 .submit-actions > :first-child { flex: 1; }
 .submit-actions > :last-child { flex: 2; }
 .category-popup { max-width: 480px; left: 50%; transform: translateX(-50%); padding-bottom: env(safe-area-inset-bottom); }
-button:focus-visible { outline: 2px solid #008aff; outline-offset: 2px; }
+button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 @media (max-width: 350px) { .album-form-page { --van-field-label-width: 75px; } .privacy-note { margin-left: 90px; } }
 </style>

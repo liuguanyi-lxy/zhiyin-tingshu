@@ -90,37 +90,37 @@ onMounted(loadPlans)
 </script>
 
 <style scoped>
-.vip-page { min-height: 100vh; color: #323233; background: #fff; box-sizing: border-box; padding-bottom: calc(108px + env(safe-area-inset-bottom)); }
-.member-card { display: flex; align-items: center; gap: 12px; padding: 24px 18px; border-bottom: 1px solid #edcaa8; }
-.member-avatar { width: 54px; height: 54px; border-radius: 50%; overflow: hidden; background: #fff6ed; color: #b38356; display: grid; place-items: center; flex-shrink: 0; }
+.vip-page { min-height: 100vh; color: var(--ink); background: var(--ground); box-sizing: border-box; padding-bottom: calc(108px + env(safe-area-inset-bottom)); }
+.member-card { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-5) var(--sp-4); background: var(--surface); border-bottom: 1px solid var(--line); }
+.member-avatar { width: 54px; height: 54px; border-radius: var(--r-pill); overflow: hidden; background: var(--vip-soft); color: var(--vip); display: grid; place-items: center; flex-shrink: 0; }
 .member-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .member-info { flex: 1; min-width: 0; }
-.member-info h1 { margin: 0 0 7px; font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.member-info p { margin: 0; color: #969799; font-size: 12px; line-height: 1.6; }
-.member-tag { background: #dcac80; color: #744c28; font-size: 12px; border-radius: 15px; padding: 3px 9px; }
-.plans-section { max-width: 600px; margin: 0 auto; padding: 24px 18px; }
-.plans-section h2 { font-size: 17px; margin: 0 0 8px; }
-.section-note { margin: 0 0 20px; color: #969799; font-size: 12px; }
-.plan-list { display: grid; gap: 12px; }
-.plan-card { display: block; position: relative; width: 100%; padding: 18px; border: 1px solid #ebedf0; border-radius: 8px; background: #fff; text-align: left; font: inherit; cursor: pointer; }
-.plan-card.selected { border-color: #dcac80; background: #fffaf5; }
-.plan-title { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
-.plan-title strong { font-size: 16px; color: #744c28; overflow-wrap: anywhere; }
-.plan-title > span { flex-shrink: 0; color: #969799; font-size: 12px; }
-.plan-price { display: flex; gap: 12px; align-items: baseline; margin-top: 14px; padding-right: 24px; }
-.price { color: #a76732; font-size: 26px; font-weight: 600; }
-.price small { margin-right: 4px; font-size: 14px; }
-.plan-price del { color: #b1b3b8; font-size: 12px; }
-.plan-intro, .plan-description { margin: 10px 0 0; color: #969799; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
-.plan-description { margin-top: 20px; white-space: pre-wrap; }
-.invalid-plan { display: block; color: #969799; font-size: 12px; margin-top: 10px; }
-.selected-check { position: absolute; right: 16px; bottom: 18px; }
+.member-info h1 { margin: 0 0 7px; font-size: var(--fs-section); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-info p { margin: 0; color: var(--ink-3); font-size: var(--fs-meta); line-height: 1.6; }
+.member-tag { background: var(--vip-soft); color: var(--vip); font-size: var(--fs-meta); border-radius: var(--r-pill); padding: 3px 9px; }
+.plans-section { max-width: 600px; margin: 0 auto; padding: var(--sp-5) var(--sp-4); }
+.plans-section h2 { font-size: var(--fs-title); margin: 0 0 var(--sp-2); }
+.section-note { margin: 0 0 var(--sp-4); color: var(--ink-3); font-size: var(--fs-meta); }
+.plan-list { display: grid; gap: var(--sp-3); }
+.plan-card { display: block; position: relative; width: 100%; padding: var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); text-align: left; font: inherit; cursor: pointer; }
+.plan-card.selected { border-color: var(--vip); background: var(--vip-soft); }
+.plan-title { display: flex; justify-content: space-between; gap: var(--sp-3); align-items: baseline; }
+.plan-title strong { font-size: var(--fs-body); color: var(--vip); overflow-wrap: anywhere; }
+.plan-title > span { flex-shrink: 0; color: var(--ink-3); font-size: var(--fs-meta); }
+.plan-price { display: flex; gap: var(--sp-3); align-items: baseline; margin-top: var(--sp-3); padding-right: var(--sp-5); }
+.price { color: var(--vip); font-size: var(--fs-display); font-weight: 600; }
+.price small { margin-right: 4px; font-size: var(--fs-body); }
+.plan-price del { color: var(--ink-4); font-size: var(--fs-meta); }
+.plan-intro, .plan-description { margin: var(--sp-3) 0 0; color: var(--ink-3); font-size: var(--fs-meta); line-height: 1.8; overflow-wrap: anywhere; }
+.plan-description { margin-top: var(--sp-4); white-space: pre-wrap; }
+.invalid-plan { display: block; color: var(--ink-3); font-size: var(--fs-meta); margin-top: var(--sp-2); }
+.selected-check { position: absolute; right: var(--sp-4); bottom: var(--sp-4); }
 .plan-card:disabled { opacity: 0.6; cursor: not-allowed; }
-.purchase-footer { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: min(100%, 480px); box-sizing: border-box; padding: 14px 18px calc(14px + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; gap: 14px; background: #fff; border-top: 1px solid #f0f0f0; z-index: 10; }
+.purchase-footer { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: min(100%, 480px); box-sizing: border-box; padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); background: var(--surface); border-top: 1px solid var(--line); z-index: 10; }
 .purchase-footer > div { min-width: 0; flex: 1; }
-.purchase-footer span { display: block; color: #969799; font-size: 11px; }
-.purchase-footer strong { display: block; margin-top: 5px; color: #744c28; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.purchase-footer span { display: block; color: var(--ink-3); font-size: var(--fs-micro); }
+.purchase-footer strong { display: block; margin-top: 5px; color: var(--vip); font-size: var(--fs-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .purchase-footer .van-button { min-width: 120px; flex-shrink: 0; }
-.status-line, .error-state { text-align: center; padding: 30px 8px; color: #969799; font-size: 13px; line-height: 1.6; }
-button:focus-visible { outline: 2px solid #b38356; outline-offset: 3px; }
+.status-line, .error-state { text-align: center; padding: var(--sp-5) var(--sp-2); color: var(--ink-3); font-size: var(--fs-body); line-height: 1.6; }
+button:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
 </style>

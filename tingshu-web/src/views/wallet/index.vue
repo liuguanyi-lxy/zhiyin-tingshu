@@ -1,16 +1,21 @@
 <template>
   <main class="wallet-page">
     <van-nav-bar title="钱包" left-text="返回" left-arrow @click-left="goBack" />
-    <section class="balance-card" aria-labelledby="balance-title">
-      <div><p id="balance-title">账户余额</p><strong>{{ balanceText }}</strong><span>元</span></div>
-      <van-button round color="#fff" text-color="#a25c21" :disabled="!nativePaymentReady" @click="openRecharge">{{ orderNo && !credited ? '继续充值' : '充值' }}</van-button>
-    </section>
-    <p v-if="balanceError" class="balance-error" role="alert">{{ balanceError }} <button type="button" :disabled="balanceLoading" @click="loadBalance">重试</button></p>
-    <p v-if="!nativePaymentReady" class="service-note">充值支付服务暂未接通，余额只展示后端真实数据。</p>
-    <nav class="wallet-links" aria-label="钱包明细">
-      <router-link to="/fund?id=consume"><span>消费记录</span><van-icon name="arrow" color="#c8c9cc" /></router-link>
-      <router-link to="/fund?id=invest"><span>充值记录</span><van-icon name="arrow" color="#c8c9cc" /></router-link>
-    </nav>
+    <div class="wallet-body">
+      <section class="balance-card" aria-labelledby="balance-title">
+        <div class="balance-main">
+          <p id="balance-title">账户余额</p>
+          <div class="balance-amount"><strong class="num">{{ balanceText }}</strong><span>元</span></div>
+        </div>
+        <van-button round type="primary" :disabled="!nativePaymentReady" @click="openRecharge">{{ orderNo && !credited ? '继续充值' : '充值' }}</van-button>
+      </section>
+      <p v-if="balanceError" class="balance-error" role="alert">{{ balanceError }} <button type="button" :disabled="balanceLoading" @click="loadBalance">重试</button></p>
+      <p v-if="!nativePaymentReady" class="service-note">充值支付服务暂未接通，余额只展示后端真实数据。</p>
+      <nav class="wallet-links" aria-label="钱包明细">
+        <router-link to="/fund?id=consume"><span>消费记录</span><van-icon name="arrow" color="#9aa1ab" /></router-link>
+        <router-link to="/fund?id=invest"><span>充值记录</span><van-icon name="arrow" color="#9aa1ab" /></router-link>
+      </nav>
+    </div>
 
     <van-popup v-model:show="showRecharge" position="bottom" round :closeable="!creating" :close-on-click-overlay="!creating" @closed="stopPolling">
       <section class="recharge-sheet" aria-labelledby="recharge-heading">
@@ -232,34 +237,344 @@ onMounted(loadBalance)
 </script>
 
 <style scoped>
-.wallet-page { min-height: 100vh; background: #f7f8fa; padding-bottom: calc(24px + env(safe-area-inset-bottom)); box-sizing: border-box; }
-.balance-card { display: flex; justify-content: space-between; align-items: center; margin: 15px; padding: 22px 18px; border-radius: 8px; background: #ffe4bd; color: #744c28; }
-.balance-card p { margin: 0 0 7px; font-size: 13px; }
-.balance-card strong { font-size: 30px; line-height: 1; letter-spacing: 1px; }
-.balance-card span { margin-left: 4px; font-size: 13px; }
-.balance-card .van-button { flex-shrink: 0; min-width: 72px; }
-.balance-error, .service-note { margin: 0 15px 12px; color: #c3293e; font-size: 12px; line-height: 1.6; }
-.balance-error button { padding: 0; border: 0; background: none; color: #079b4e; font: inherit; cursor: pointer; }
-.service-note { color: #969799; }
-.wallet-links { margin: 15px; background: #fff; border-radius: 8px; overflow: hidden; }
-.wallet-links a { display: flex; justify-content: space-between; align-items: center; min-height: 54px; padding: 0 15px; border-bottom: 1px solid #f0f0f0; color: #323233; font-size: 14px; text-decoration: none; }
-.wallet-links a:last-child { border-bottom: 0; }
-.recharge-sheet { box-sizing: border-box; max-height: 88dvh; overflow-y: auto; padding: 24px 22px calc(24px + env(safe-area-inset-bottom)); color: #323233; }
-.recharge-sheet h2 { margin: 0 0 24px; text-align: center; font-size: 18px; }
-.amount-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.amount-grid button { min-height: 48px; border: 1px solid #ebedf0; border-radius: 6px; background: #fff; color: #646566; font: inherit; font-size: 14px; cursor: pointer; }
-.amount-grid button.selected { border-color: #07c160; background: #f0fff5; color: #079b4e; }
-.custom-label { display: block; margin-top: 18px; color: #646566; font-size: 13px; }
-.custom-label input { width: 100%; box-sizing: border-box; margin-top: 8px; min-height: 44px; padding: 8px 10px; border: 1px solid #ebedf0; border-radius: 6px; font: inherit; font-size: 16px; }
-.dialog-note { margin: 16px 0; color: #969799; font-size: 12px; line-height: 1.7; }
-.recharge-value { text-align: center; font-size: 14px; margin: 0 0 8px; }
-.recharge-value strong { margin-left: 4px; font-size: 24px; color: #a25c21; }
-.order-no { font-size: 11px; color: #969799; text-align: center; overflow-wrap: anywhere; }
-.payment-qr { display: block; width: min(232px, 100%); margin: 16px auto; }
-.payment-status, .payment-error { text-align: center; font-size: 13px; line-height: 1.7; margin: 16px 0; }
-.payment-status { color: #646566; }
-.payment-error { color: #c3293e; overflow-wrap: anywhere; }
-.credited-state { text-align: center; padding: 22px 0; }
-.credited-state h3 { font-size: 18px; margin: 12px 0 0; }
-a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid #079b4e; outline-offset: 2px; border-radius: 4px; }
+.wallet-page {
+  min-height: 100vh;
+  background: var(--ground);
+  padding-bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.wallet-body {
+  padding: var(--sp-3);
+}
+
+.balance-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-4);
+  border-radius: var(--r-lg);
+  background: var(--vip-soft);
+  border: 1px solid var(--line);
+  color: var(--vip);
+}
+
+.balance-main {
+  min-width: 0;
+}
+
+.balance-main p {
+  margin: 0 0 6px;
+  font-size: var(--fs-meta);
+  color: var(--vip);
+}
+
+.balance-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.balance-amount strong {
+  font-size: var(--fs-display);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  color: var(--ink);
+}
+
+.balance-amount span {
+  font-size: var(--fs-meta);
+  color: var(--vip);
+}
+
+.balance-card :deep(.van-button) {
+  flex-shrink: 0;
+  min-width: 76px;
+}
+
+.balance-error,
+.service-note {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-meta);
+  line-height: 1.6;
+}
+
+.balance-error {
+  color: var(--paid);
+}
+
+.balance-error button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  cursor: pointer;
+}
+
+.balance-error button:hover {
+  color: var(--brand-strong);
+}
+
+.service-note {
+  color: var(--ink-3);
+}
+
+.wallet-links {
+  margin-top: var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.wallet-links a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.wallet-links a:last-child {
+  border-bottom: 0;
+}
+
+.wallet-links a:hover {
+  background: var(--line-soft);
+}
+
+/* 充值弹层 */
+.recharge-sheet {
+  box-sizing: border-box;
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: var(--sp-5) var(--sp-4) calc(var(--sp-5) + env(safe-area-inset-bottom));
+  color: var(--ink);
+}
+
+.recharge-sheet h2 {
+  margin: 0 0 var(--sp-5);
+  text-align: center;
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.amount-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+}
+
+.amount-grid button {
+  min-height: 48px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: var(--fs-body);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.amount-grid button:hover {
+  border-color: var(--brand-line);
+}
+
+.amount-grid button.selected {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.custom-label {
+  display: block;
+  margin-top: var(--sp-4);
+  color: var(--ink-2);
+  font-size: var(--fs-meta);
+}
+
+.custom-label input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: var(--sp-2);
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.custom-label input::placeholder {
+  color: var(--ink-4);
+}
+
+.dialog-note {
+  margin: var(--sp-4) 0;
+  color: var(--ink-3);
+  font-size: var(--fs-meta);
+  line-height: 1.7;
+}
+
+.recharge-value {
+  text-align: center;
+  font-size: var(--fs-body);
+  margin: 0 0 var(--sp-2);
+  color: var(--ink-2);
+}
+
+.recharge-value strong {
+  margin-left: 4px;
+  font-size: var(--fs-display);
+  color: var(--paid);
+  font-variant-numeric: tabular-nums;
+}
+
+.order-no {
+  font-size: var(--fs-micro);
+  color: var(--ink-3);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.payment-qr {
+  display: block;
+  width: min(232px, 100%);
+  margin: var(--sp-4) auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+.payment-status,
+.payment-error {
+  text-align: center;
+  font-size: var(--fs-meta);
+  line-height: 1.7;
+  margin: var(--sp-4) 0;
+}
+
+.payment-status {
+  color: var(--ink-3);
+}
+
+.payment-error {
+  color: var(--paid);
+  overflow-wrap: anywhere;
+}
+
+.credited-state {
+  text-align: center;
+  padding: var(--sp-5) 0;
+}
+
+.credited-state h3 {
+  font-size: var(--fs-section);
+  margin: var(--sp-3) 0 0;
+  color: var(--ink);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* ============================================================
+   桌面端
+   ============================================================ */
+@media (min-width: 960px) {
+  .wallet-page :deep(.van-nav-bar) {
+    background: transparent;
+  }
+
+  .wallet-page :deep(.van-nav-bar__title) {
+    font-size: var(--fs-title);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .wallet-body {
+    max-width: var(--shell-max);
+    margin: 0 auto;
+    padding: var(--sp-5) var(--sp-5) var(--sp-6);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-areas:
+      'balance balance'
+      'error error'
+      'note note'
+      'links links';
+    gap: var(--sp-4);
+    align-items: start;
+  }
+
+  .balance-card {
+    grid-area: balance;
+    padding: var(--sp-5) var(--sp-5);
+  }
+
+  .balance-error {
+    grid-area: error;
+    margin: 0;
+  }
+
+  .service-note {
+    grid-area: note;
+    margin: 0;
+  }
+
+  .wallet-links {
+    grid-area: links;
+    margin-top: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-4);
+    background: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .wallet-links a {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    min-height: 56px;
+  }
+
+  .wallet-links a:last-child {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .recharge-sheet {
+    width: 420px;
+    margin: 0 auto;
+    padding: var(--sp-5) var(--sp-5) var(--sp-5);
+  }
+
+  .wallet-page :deep(.van-popup--bottom) {
+    width: 480px;
+    max-width: 100%;
+    left: 50%;
+    right: auto;
+    margin-left: -240px;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+}
 </style>

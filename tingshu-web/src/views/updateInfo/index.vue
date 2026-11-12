@@ -5,52 +5,54 @@
       <div v-if="profileLoading" class="status-line" role="status"><van-loading size="20">正在读取资料…</van-loading></div>
       <div v-if="loadError" class="load-error" role="alert">
         <p>{{ loadError }}</p>
-        <van-button size="small" plain color="#07c160" @click="loadProfile">重新加载</van-button>
+        <van-button size="small" plain type="primary" @click="loadProfile">重新加载</van-button>
       </div>
 
       <form v-if="profileReady" novalidate @submit.prevent="saveProfile">
-        <div class="avatar-section">
-          <div class="avatar-preview">
-            <img v-if="form.avatarUrl && !avatarFailed" :src="form.avatarUrl" alt="当前头像" @error="avatarFailed = true" />
-            <van-icon v-else name="manager" size="42" color="#c8c9cc" aria-label="暂无可显示的头像" />
+        <div class="tingshu-card form-card">
+          <div class="avatar-section">
+            <div class="avatar-preview">
+              <img v-if="form.avatarUrl && !avatarFailed" :src="form.avatarUrl" alt="当前头像" @error="avatarFailed = true" />
+              <van-icon v-else name="manager" size="42" color="#9aa1ab" aria-label="暂无可显示的头像" />
+            </div>
+            <div class="avatar-actions">
+              <span class="field-label">头像</span>
+              <button type="button" class="upload-button" :disabled="busy" :aria-busy="uploading" @click="fileInput?.click()">
+                {{ uploading ? '上传中…' : '更换头像' }}
+              </button>
+              <input ref="fileInput" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" tabindex="-1" aria-label="选择头像图片" :disabled="busy" @change="uploadAvatar" />
+              <p class="field-hint">JPG、PNG 或 WebP，不超过 5 MB</p>
+            </div>
           </div>
-          <div class="avatar-actions">
-            <span class="field-label">头像</span>
-            <button type="button" class="upload-button" :disabled="busy" :aria-busy="uploading" @click="fileInput?.click()">
-              {{ uploading ? '上传中…' : '更换头像' }}
-            </button>
-            <input ref="fileInput" class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" tabindex="-1" aria-label="选择头像图片" :disabled="busy" @change="uploadAvatar" />
-            <p class="field-hint">JPG、PNG 或 WebP，不超过 5 MB</p>
-          </div>
-        </div>
-        <p v-if="uploadError" class="field-error" role="alert">{{ uploadError }}</p>
-        <p v-if="avatarError" class="field-error" role="alert">{{ avatarError }}</p>
+          <p v-if="uploadError" class="field-error" role="alert">{{ uploadError }}</p>
+          <p v-if="avatarError" class="field-error" role="alert">{{ avatarError }}</p>
 
-        <div class="nickname-field">
-          <label for="profile-nickname">昵称</label>
-          <input
-            id="profile-nickname"
-            ref="nicknameInput"
-            v-model="form.nickname"
-            name="nickname"
-            type="text"
-            autocomplete="nickname"
-            maxlength="32"
-            placeholder="请输入昵称"
-            required
-            :disabled="busy"
-            :aria-invalid="!!nicknameError"
-            :aria-describedby="nicknameError ? 'profile-nickname-error' : 'profile-nickname-hint'"
-            @input="nicknameError = ''; saveError = ''"
-          />
-          <p v-if="nicknameError" id="profile-nickname-error" class="field-error">{{ nicknameError }}</p>
-          <p v-else id="profile-nickname-hint" class="field-hint">1–32 个字符，不能只填写空格</p>
+          <div class="nickname-field">
+            <label for="profile-nickname">昵称</label>
+            <input
+              id="profile-nickname"
+              ref="nicknameInput"
+              v-model="form.nickname"
+              name="nickname"
+              type="text"
+              autocomplete="nickname"
+              maxlength="32"
+              placeholder="请输入昵称"
+              required
+              :disabled="busy"
+              :aria-invalid="!!nicknameError"
+              :aria-describedby="nicknameError ? 'profile-nickname-error' : 'profile-nickname-hint'"
+              @input="nicknameError = ''; saveError = ''"
+            />
+            <p v-if="nicknameError" id="profile-nickname-error" class="field-error">{{ nicknameError }}</p>
+            <p v-else id="profile-nickname-hint" class="field-hint">1–32 个字符，不能只填写空格</p>
+          </div>
+          <p v-if="saveError" class="save-error" role="alert">{{ saveError }}</p>
+          <van-button class="save-button" native-type="submit" type="primary" block round :loading="saving" loading-text="保存中…" :disabled="busy || !changed">
+            保存修改
+          </van-button>
+          <p class="save-hint">{{ uploading ? '头像上传完成后，点击保存修改' : changed ? '保存后将更新你的昵称和头像' : '修改昵称或头像后保存' }}</p>
         </div>
-        <p v-if="saveError" class="save-error" role="alert">{{ saveError }}</p>
-        <van-button class="save-button" native-type="submit" color="#07c160" block round :loading="saving" loading-text="保存中…" :disabled="busy || !changed">
-          保存修改
-        </van-button>
-        <p class="save-hint">{{ uploading ? '头像上传完成后，点击保存修改' : changed ? '保存后将更新你的昵称和头像' : '修改昵称或头像后保存' }}</p>
       </form>
     </section>
   </main>
@@ -191,29 +193,227 @@ onMounted(loadProfile)
 </script>
 
 <style scoped>
-.profile-page { min-height: 100vh; min-height: 100dvh; background: #fff; color: #323233; padding-bottom: calc(24px + env(safe-area-inset-bottom)); box-sizing: border-box; --van-nav-bar-icon-color: #646566; --van-nav-bar-text-color: #646566; }
-.profile-content { max-width: 400px; margin: 0 auto; padding: 24px; }
-.status-line { padding: 36px 0; text-align: center; }
-.load-error { padding: 20px 0; color: #646566; font-size: 14px; line-height: 1.6; }
-.avatar-section { display: flex; align-items: center; gap: 20px; padding: 8px 0 28px; }
-.avatar-preview { width: 88px; height: 88px; display: grid; place-items: center; flex-shrink: 0; border-radius: 50%; background: #f7f8fa; overflow: hidden; }
-.avatar-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.avatar-actions { min-width: 0; }
-.field-label { display: block; font-size: 14px; color: #323233; }
-.upload-button { display: block; min-height: 40px; padding: 4px 0; border: 0; background: none; color: #079b4e; font: inherit; font-size: 14px; cursor: pointer; }
-.field-hint { color: #969799; font-size: 12px; line-height: 1.6; margin: 5px 0 0; }
-.nickname-field { padding-top: 24px; border-top: 1px solid #ebedf0; }
-.nickname-field label { display: block; color: #646566; font-size: 14px; margin-bottom: 10px; }
-.nickname-field input { width: 100%; min-height: 46px; padding: 10px 2px; box-sizing: border-box; border: 0; border-bottom: 1px solid #ebedf0; border-radius: 0; background: #fff; color: #323233; font: inherit; font-size: 16px; }
-.nickname-field input::placeholder { color: #b1b3b8; }
-.nickname-field input:focus { outline: none; border-color: #07c160; box-shadow: 0 1px 0 #07c160; }
-.nickname-field input[aria-invalid='true'] { border-color: #ee0a24; }
-.field-error { color: #ee0a24; font-size: 12px; margin: 8px 0; line-height: 1.5; }
-.save-error { margin-top: 24px; padding: 10px 12px; border-radius: 6px; background: #fff2f3; color: #c3293e; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
-.save-button { margin-top: 36px; min-height: 46px; font-size: 16px; }
-.save-hint { margin: 12px 0 0; color: #969799; font-size: 12px; line-height: 1.6; text-align: center; }
-button:focus-visible { outline: 2px solid #079b4e; outline-offset: 4px; border-radius: 4px; }
-button:disabled { cursor: not-allowed; opacity: 0.6; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-@media (max-width: 360px) { .profile-content { padding: 20px; } .avatar-section { gap: 16px; } }
+.profile-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--ground);
+  color: var(--ink);
+  padding-bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  --van-nav-bar-icon-color: var(--ink-3);
+  --van-nav-bar-text-color: var(--ink-3);
+}
+
+.profile-content {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: var(--sp-4) var(--sp-3) var(--sp-5);
+}
+
+.status-line {
+  padding: var(--sp-5) 0;
+  text-align: center;
+}
+
+.load-error {
+  padding: var(--sp-4) 0;
+  color: var(--ink-2);
+  font-size: var(--fs-body);
+  line-height: 1.6;
+}
+
+.load-error p {
+  margin: 0 0 var(--sp-2);
+}
+
+.form-card {
+  padding: var(--sp-4);
+}
+
+.avatar-section {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-1) 0 var(--sp-4);
+}
+
+.avatar-preview {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+
+.avatar-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-actions {
+  min-width: 0;
+}
+
+.field-label {
+  display: block;
+  font-size: var(--fs-body);
+  color: var(--ink);
+}
+
+.upload-button {
+  display: block;
+  min-height: 40px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: var(--fs-body);
+  cursor: pointer;
+}
+
+.upload-button:hover {
+  color: var(--brand-strong);
+}
+
+.field-hint {
+  color: var(--ink-3);
+  font-size: var(--fs-meta);
+  line-height: 1.6;
+  margin: 6px 0 0;
+}
+
+.nickname-field {
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line-soft);
+}
+
+.nickname-field label {
+  display: block;
+  color: var(--ink-2);
+  font-size: var(--fs-body);
+  margin-bottom: var(--sp-2);
+}
+
+.nickname-field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 2px;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.nickname-field input::placeholder {
+  color: var(--ink-4);
+}
+
+.nickname-field input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 1px 0 var(--brand);
+}
+
+.nickname-field input[aria-invalid='true'] {
+  border-color: var(--paid);
+}
+
+.field-error {
+  color: var(--paid);
+  font-size: var(--fs-meta);
+  margin: var(--sp-2) 0 0;
+  line-height: 1.5;
+}
+
+.save-error {
+  margin-top: var(--sp-4);
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--paid-soft);
+  color: var(--paid);
+  font-size: var(--fs-meta);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.save-button {
+  margin-top: var(--sp-5);
+  min-height: 46px;
+  font-size: var(--fs-body);
+}
+
+.save-hint {
+  margin: var(--sp-3) 0 0;
+  color: var(--ink-3);
+  font-size: var(--fs-meta);
+  line-height: 1.6;
+  text-align: center;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+  border-radius: var(--r-sm);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 360px) {
+  .profile-content {
+    padding: var(--sp-3);
+  }
+
+  .avatar-section {
+    gap: var(--sp-3);
+  }
+}
+
+/* ============================================================
+   桌面端
+   ============================================================ */
+@media (min-width: 960px) {
+  .profile-page :deep(.van-nav-bar) {
+    background: transparent;
+  }
+
+  .profile-page :deep(.van-nav-bar__title) {
+    font-size: var(--fs-title);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .profile-content {
+    max-width: 520px;
+    padding: var(--sp-5) var(--sp-4) var(--sp-6);
+  }
+
+  .form-card {
+    padding: var(--sp-5);
+  }
+}
 </style>

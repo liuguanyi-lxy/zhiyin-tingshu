@@ -9,7 +9,7 @@
           <van-image class="comment-avatar" round :src="entry.avatarUrl" width="32" height="32" fit="cover"><template #error><van-icon name="user-o" /></template></van-image>
           <div class="comment-body">
             <div class="comment-author">{{ entry.nickname || '听友' }}<span v-if="entry.parent?.nickname"> 回复 {{ entry.parent.nickname }}</span></div>
-            <van-rate v-if="index === 0 && entry.albumCommentScore" :model-value="entry.albumCommentScore / 2" readonly allow-half :size="11" color="#e2bb92" />
+            <van-rate v-if="index === 0 && entry.albumCommentScore" :model-value="entry.albumCommentScore / 2" readonly allow-half :size="11" color="#b0773a" />
             <p>{{ entry.content }}</p>
             <div class="comment-meta"><time>{{ formatDate(entry.createTime) }}</time><div class="comment-actions">
               <button type="button" :disabled="pending.has(String(entry.id))" :aria-label="`${entry.isPraise ? '取消点赞' : '点赞'}${entry.nickname || '听友'}的评论`" :class="{ praised: entry.isPraise }" @click="togglePraise(entry)"><van-icon :name="entry.isPraise ? 'good-job' : 'good-job-o'" /> {{ entry.praiseCount || 0 }}</button>
@@ -24,10 +24,10 @@
     </template>
     <form class="comment-editor" @submit.prevent="sendComment">
       <div v-if="replyTo" class="reply-target"><span>回复 {{ replyTo.nickname || '听友' }}</span><button type="button" aria-label="取消回复" @click="replyTo = null"><van-icon name="cross" /></button></div>
-      <div v-else class="comment-score"><label>为专辑评分</label><van-rate v-model="score" allow-half :size="19" color="#e2bb92" /></div>
+      <div v-else class="comment-score"><label>为专辑评分</label><van-rate v-model="score" allow-half :size="19" color="#b0773a" /></div>
       <label class="sr-only" :for="editorId">评论内容</label>
       <textarea :id="editorId" v-model="draft" maxlength="500" rows="3" :placeholder="replyTo ? '写下你的回复' : '这一集，有什么让你印象深刻？'" :disabled="sending"></textarea>
-      <div class="editor-footer"><span>{{ draft.length }}/500</span><van-button native-type="submit" round size="small" color="#ff0036" :loading="sending" :disabled="!draft.trim() || sending">{{ userStore.token ? (replyTo ? '发布回复' : '发表评论') : '登录后发表' }}</van-button></div>
+      <div class="editor-footer"><span>{{ draft.length }}/500</span><van-button native-type="submit" round size="small" color="#007aff" :loading="sending" :disabled="!draft.trim() || sending">{{ userStore.token ? (replyTo ? '发布回复' : '发表评论') : '登录后发表' }}</van-button></div>
       <p v-if="sendError" class="comment-error" role="alert">{{ sendError }}</p>
     </form>
   </section>
@@ -152,33 +152,36 @@ onBeforeUnmount(() => { active = false; version++; contextVersion++ })
 </script>
 
 <style scoped>
-.comments-panel { background: #fff; padding: 18px 16px; }
-.comments-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.comments-heading h2 { margin: 0; color: #333; font-size: 16px; }
-.comments-heading h2 span { font-size: 12px; color: #999; font-weight: 400; margin-left: 6px; }
-.comments-heading button { border: 0; background: none; font-size: 12px; color: #888; padding: 6px; }
-.comments-loading { text-align: center; padding: 40px 0; }
-.comment-thread { padding: 20px 0 4px; border-bottom: 1px solid #f3f3f3; }
-.comment-entry { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+.comments-panel { background: var(--surface); padding: var(--sp-4); }
+.comments-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.comments-heading h2 { margin: 0; color: var(--ink); font-size: var(--fs-section); font-weight: 600; }
+.comments-heading h2 span { font-size: var(--fs-meta); color: var(--ink-4); font-weight: 400; margin-left: 6px; }
+.comments-heading button { border: 0; background: none; font-size: var(--fs-meta); color: var(--ink-3); padding: 4px 0; }
+.comments-heading button:hover { color: var(--brand); }
+.comments-loading { text-align: center; padding: var(--sp-6) 0; }
+.comment-thread { padding: var(--sp-4) 0 var(--sp-1); border-bottom: 1px solid var(--line-soft); }
+.comment-entry { display: flex; align-items: flex-start; gap: var(--sp-3); margin-bottom: var(--sp-4); }
 .comment-avatar { flex-shrink: 0; }
 .comment-body { flex: 1; min-width: 0; }
-.comment-author { color: #777; font-size: 12px; line-height: 1.6; }
-.comment-author span { color: #aaa; }
-.comment-body p { margin: 5px 0 8px; color: #333; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; }
-.comment-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; color: #bbb; }
-.comment-actions { display: flex; gap: 12px; }
-.comment-actions button { border: 0; padding: 3px 0; background: transparent; color: #999; font-size: 11px; }
-.comment-actions .praised { color: #ff0036; }
-.is-reply { margin-left: 35px; padding: 10px; background: #fafafa; border-radius: 5px; }
+.comment-author { color: var(--ink-2); font-size: var(--fs-meta); line-height: 1.6; }
+.comment-author span { color: var(--ink-4); }
+.comment-body p { margin: 5px 0 var(--sp-2); color: var(--ink); font-size: var(--fs-body); line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; }
+.comment-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-micro); color: var(--ink-4); }
+.comment-actions { display: flex; gap: var(--sp-3); }
+.comment-actions button { border: 0; padding: 2px 0; background: transparent; color: var(--ink-3); font-size: var(--fs-micro); }
+.comment-actions button:hover { color: var(--brand); }
+.comment-actions .praised { color: var(--paid); }
+.is-reply { margin-left: 36px; padding: var(--sp-3); background: var(--ground); border-radius: var(--r-md); }
 .is-reply .comment-avatar { width: 24px !important; height: 24px !important; }
-.comment-editor { margin-top: 24px; }
-.comment-score, .reply-target { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; color: #777; font-size: 12px; }
-.reply-target button { border: 0; background: none; color: #999; }
-.comment-editor textarea { box-sizing: border-box; display: block; width: 100%; resize: vertical; min-height: 84px; max-height: 200px; border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fafafa; color: #333; font: inherit; font-size: 13px; line-height: 1.6; }
-.editor-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; color: #bbb; font-size: 11px; }
-.comment-error { color: #d83c50; font-size: 12px; }
+.comment-editor { margin-top: var(--sp-5); }
+.comment-score, .reply-target { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding-bottom: var(--sp-3); color: var(--ink-3); font-size: var(--fs-meta); }
+.reply-target button { border: 0; background: none; color: var(--ink-4); }
+.comment-editor textarea { box-sizing: border-box; display: block; width: 100%; resize: vertical; min-height: 84px; max-height: 200px; border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-3); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-body); line-height: 1.6; }
+.comment-editor textarea:focus { border-color: var(--brand-line); outline: none; }
+.editor-footer { display: flex; align-items: center; justify-content: space-between; margin-top: var(--sp-3); color: var(--ink-4); font-size: var(--fs-micro); }
+.comment-error { color: var(--paid); font-size: var(--fs-meta); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 button { cursor: pointer; }
 button:disabled { cursor: default; opacity: .55; }
-button:focus-visible, textarea:focus-visible { outline: 2px solid #ff0036; outline-offset: 3px; }
+button:focus-visible, textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
 </style>

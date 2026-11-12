@@ -1,21 +1,23 @@
-<template>
+﻿<template>
   <main class="result-page">
     <van-nav-bar title="支付结果" left-arrow @click-left="goBack" />
     <section class="pay-result" aria-live="polite">
       <div v-if="state === 'checking'" class="checking" role="status"><van-loading vertical>正在核验支付结果</van-loading><p>以订单或充值记录的后端状态为准</p></div>
       <template v-else>
-        <div class="pay-status">
+        <div class="pay-status" :class="`state-${state}`">
           <van-icon :name="statusIcon" :color="statusColor" size="30" />
           <h1>{{ statusTitle }}</h1>
         </div>
         <p class="status-description" :class="{ failure: state === 'error' }" :role="state === 'error' ? 'alert' : undefined">{{ message }}</p>
-        <p v-if="record" class="pay-money">{{ isRecharge ? '充值金额' : '订单金额' }} <strong>￥{{ formatAmount(isRecharge ? record.rechargeAmount : record.orderAmount) }}</strong></p>
-        <p v-if="orderNo" class="order-number">{{ isRecharge ? '充值单号' : '订单号' }}：{{ orderNo }}</p>
-        <p v-if="record?.payWayName" class="pay-way">付款方式：{{ record.payWayName }}</p>
-        <van-button v-if="state !== 'success' && validRequest" plain round color="#fa4126" :loading="verifying" :disabled="verifying" @click="verify">重新核验</van-button>
+        <dl v-if="record" class="pay-meta">
+          <div><dt>{{ isRecharge ? '充值金额' : '订单金额' }}</dt><dd class="amount num">￥{{ formatAmount(isRecharge ? record.rechargeAmount : record.orderAmount) }}</dd></div>
+          <div v-if="orderNo"><dt>{{ isRecharge ? '充值单号' : '订单号' }}</dt><dd>{{ orderNo }}</dd></div>
+          <div v-if="record?.payWayName"><dt>付款方式</dt><dd>{{ record.payWayName }}</dd></div>
+        </dl>
+        <van-button v-if="state !== 'success' && validRequest" plain round type="primary" :loading="verifying" :disabled="verifying" @click="verify">重新核验</van-button>
         <div class="btn-wrapper">
-          <van-button round plain color="#fa4126" @click="viewRecord">{{ isRecharge ? '查看钱包' : '查看订单' }}</van-button>
-          <van-button round plain color="#fa4126" @click="router.replace('/index')">返回首页</van-button>
+          <van-button round plain type="primary" @click="viewRecord">{{ isRecharge ? '查看钱包' : '查看订单' }}</van-button>
+          <van-button round plain @click="router.replace('/index')">返回首页</van-button>
         </div>
       </template>
     </section>
@@ -43,7 +45,7 @@ const paymentType = computed(() => route.query.paymentType == null ? PAYMENT_TYP
 const isRecharge = computed(() => paymentType.value === PAYMENT_TYPE.Recharge)
 const validRequest = computed(() => !!orderNo.value && Object.values(PAYMENT_TYPE).includes(paymentType.value))
 const statusIcon = computed(() => ({ success: 'checked', pending: 'clock-o', syncing: 'clock-o', cancelled: 'close', error: 'warning-o', invalid: 'warning-o' }[state.value] || 'warning-o'))
-const statusColor = computed(() => state.value === 'success' ? '#47D368' : state.value === 'error' ? '#EE0A25' : '#ED6A0C')
+const statusColor = computed(() => state.value === 'success' ? '#007aff' : state.value === 'error' ? '#e0453a' : '#9aa1ab')
 const statusTitle = computed(() => ({
   success: isRecharge.value ? '充值成功' : '支付成功',
   pending: '尚未确认支付',
@@ -155,18 +157,154 @@ onBeforeUnmount(() => { disposed = true; version += 1 })
 </script>
 
 <style scoped>
-.result-page { min-height: 100vh; background: #fff; color: #333; }
-.pay-result { min-height: calc(100vh - 46px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 16px; box-sizing: border-box; text-align: center; }
-.checking { color: #969696; font-size: 13px; line-height: 24px; }
-.pay-status { display: flex; align-items: center; justify-content: center; margin-top: 50px; gap: 6px; }
-.pay-status h1 { font-size: 24px; line-height: 36px; font-weight: 600; margin: 0; }
-.status-description { font-size: 14px; line-height: 24px; max-width: 360px; color: #666; margin: 14px 0; overflow-wrap: anywhere; }
-.failure { color: #EE0A25; }
-.pay-money { color: #666; font-size: 14px; line-height: 24px; margin: 0 0 14px; }
-.pay-money strong { font-size: 18px; color: #fa4126; padding-left: 6px; }
-.order-number { font-size: 12px; line-height: 20px; color: #969696; margin: 0 0 10px; overflow-wrap: anywhere; max-width: 100%; }
-.pay-way { font-size: 12px; color: #969696; margin: 0 0 15px; }
-.btn-wrapper { display: flex; width: 100%; box-sizing: border-box; gap: 12px; justify-content: space-between; margin-top: 70px; padding: 6px 0; }
-.btn-wrapper :deep(.van-button) { flex: 1; min-width: 0; height: 44px; font-size: 14px; font-weight: 600; }
-@media (max-width: 350px) { .pay-status h1 { font-size: 21px; } }
+.result-page {
+  min-height: 100vh;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.pay-result {
+  min-height: calc(100vh - 46px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6) var(--sp-4);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.checking {
+  color: var(--ink-3);
+  font-size: var(--fs-meta);
+  line-height: 1.8;
+}
+
+.pay-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.pay-status h1 {
+  font-size: var(--fs-display);
+  line-height: 1.35;
+  font-weight: 600;
+  margin: 0;
+  color: var(--ink);
+}
+
+.status-description {
+  font-size: var(--fs-body);
+  line-height: 1.8;
+  max-width: 460px;
+  color: var(--ink-2);
+  margin: 0 0 var(--sp-5);
+  overflow-wrap: anywhere;
+}
+
+.status-description.failure {
+  color: var(--paid);
+}
+
+.pay-meta {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 0 var(--sp-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-2) var(--sp-4);
+}
+
+.pay-meta > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-4);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.pay-meta > div:last-child {
+  border-bottom: 0;
+}
+
+.pay-meta dt {
+  flex-shrink: 0;
+  color: var(--ink-3);
+  font-size: var(--fs-meta);
+}
+
+.pay-meta dd {
+  margin: 0;
+  text-align: right;
+  color: var(--ink-2);
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.pay-meta .amount {
+  color: var(--paid);
+  font-size: var(--fs-title);
+  font-weight: 600;
+}
+
+.btn-wrapper {
+  display: flex;
+  width: 100%;
+  max-width: 420px;
+  box-sizing: border-box;
+  gap: var(--sp-3);
+  margin-top: var(--sp-6);
+}
+
+.btn-wrapper :deep(.van-button) {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+
+@media (max-width: 350px) {
+  .pay-status h1 {
+    font-size: var(--fs-title);
+  }
+}
+
+/* ============================================================
+   桌面端
+   ============================================================ */
+@media (min-width: 960px) {
+  .result-page :deep(.van-nav-bar) {
+    background: transparent;
+  }
+
+  .result-page :deep(.van-nav-bar__title) {
+    font-size: var(--fs-title);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .pay-result {
+    padding: var(--sp-6) var(--sp-5);
+  }
+
+  .status-description {
+    margin-bottom: var(--sp-5);
+  }
+
+  .pay-meta {
+    max-width: 460px;
+  }
+
+  .btn-wrapper {
+    max-width: 460px;
+    margin-top: var(--sp-5);
+  }
+}
 </style>

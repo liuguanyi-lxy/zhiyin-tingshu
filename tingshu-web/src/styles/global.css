@@ -1,30 +1,88 @@
+/* ============================================================
+   知音听书 · 网页版设计令牌
+   品牌色与小程序端对齐（iOS 蓝 #007AFF），双端同一套品牌识别。
+   ============================================================ */
+
+:root {
+  /* 品牌与语义色 */
+  --brand: #007aff;
+  --brand-strong: #0062cc;
+  --brand-soft: #eaf3ff;
+  --brand-line: #d3e5ff;
+  --vip: #b0773a;
+  --vip-soft: #fbf3e7;
+  --paid: #e0453a;
+  --paid-soft: #fdeeec;
+
+  /* 中性色阶 */
+  --ink: #14171c;
+  --ink-2: #41474f;
+  --ink-3: #6b7280;
+  --ink-4: #9aa1ab;
+  --line: #e8eaed;
+  --line-soft: #f0f1f3;
+  --surface: #ffffff;
+  --ground: #f6f7f9;
+
+  /* 圆角：小圆角更克制，避免"塑料卡片"观感 */
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+  --r-pill: 999px;
+
+  /* 间距节奏 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* 排版 */
+  --font: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Segoe UI,
+    Arial, Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft Yahei', sans-serif;
+  --fs-display: 26px;
+  --fs-title: 19px;
+  --fs-section: 16px;
+  --fs-body: 14px;
+  --fs-meta: 12px;
+  --fs-micro: 11px;
+
+  /* 版心：手机单栏，桌面多栏 */
+  --shell-max: 1200px;
+  --sidebar-w: 208px;
+  --tabbar-h: 50px;
+
+  /* Vant 主题对齐 */
+  --van-primary-color: var(--brand);
+  --van-danger-color: var(--paid);
+  --van-text-color: var(--ink);
+  --van-text-color-2: var(--ink-2);
+  --van-text-color-3: var(--ink-3);
+  --van-background: var(--ground);
+  --van-background-2: var(--surface);
+  --van-border-color: var(--line);
+  --van-radius-md: var(--r-md);
+  --van-radius-lg: var(--r-lg);
+  --van-font-size-md: var(--fs-body);
+  --van-nav-bar-height: 46px;
+  --van-tabbar-height: var(--tabbar-h);
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
-  background-color: #f7f8fa;
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,
-    Segoe UI, Arial, Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft Yahei',
-    sans-serif;
+  background-color: var(--ground);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--fs-body);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #app {
-  max-width: 480px;
-  margin: 0 auto;
   min-height: 100vh;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.08);
-}
-
-/* 固定导航与内容同宽，避免桌面窗口上控件横跨整个浏览器。 */
-.van-nav-bar--fixed,
-.van-tabbar--fixed,
-.van-submit-bar,
-.van-action-bar {
-  max-width: 480px;
-  left: 0;
-  right: 0;
-  margin-inline: auto;
 }
 
 button,
@@ -32,16 +90,224 @@ input,
 textarea,
 select {
   font: inherit;
+  color: inherit;
 }
 
 img {
   max-width: 100%;
+  display: block;
 }
 
-/* 与小程序视觉对齐的通用卡片 */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ============================================================
+   布局骨架
+   移动端：单栏 + 底部 tabbar
+   桌面端(≥960px)：左侧固定导航 + 右侧内容区
+   ============================================================ */
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-main {
+  min-height: 100vh;
+}
+
+/* 桌面端顶栏，仅在大屏出现 */
+.desktop-header {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    grid-template-rows: 60px 1fr;
+    grid-template-areas:
+      'side head'
+      'side body';
+  }
+
+  .desktop-sidebar {
+    grid-area: side;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 20px 12px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .desktop-header {
+    grid-area: head;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    padding: 0 var(--sp-5);
+    background: rgba(255, 255, 255, 0.86);
+    backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .app-main {
+    grid-area: body;
+    min-width: 0;
+    padding-bottom: var(--sp-6);
+  }
+
+  /* 桌面端隐藏底部 tabbar */
+  .van-tabbar--fixed {
+    display: none;
+  }
+
+  .van-nav-bar--fixed,
+  .van-submit-bar,
+  .van-action-bar {
+    max-width: none;
+    left: var(--sidebar-w);
+    right: 0;
+    margin-inline: 0;
+  }
+}
+
+/* ============================================================
+   通用容器与区块
+   ============================================================ */
+
+/* 页面内容版心：手机留边，桌面居中限宽 */
+.page {
+  padding: 0 var(--sp-3) var(--sp-5);
+}
+
+@media (min-width: 960px) {
+  .page {
+    padding: 0 var(--sp-5) var(--sp-6);
+    max-width: var(--shell-max);
+    margin: 0 auto;
+  }
+}
+
+/* 区块标题：左侧一条短竖线 + 标题 + 可选右侧操作 */
+.section {
+  margin: var(--sp-5) 0 var(--sp-3);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-section);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+
+.section-title::before {
+  content: '';
+  width: 3px;
+  height: 15px;
+  border-radius: 2px;
+  background: var(--brand);
+}
+
+.section-action {
+  font-size: var(--fs-meta);
+  color: var(--ink-3);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.section-action:hover {
+  color: var(--brand);
+}
+
+/* 通用卡片：细描边 + 极轻阴影，避免重投影 */
 .tingshu-card {
-  margin: 10px 12px;
-  padding: 12px;
-  background: #fff;
-  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+}
+
+/* 标签 */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tag-vip {
+  color: var(--vip);
+  background: var(--vip-soft);
+}
+
+.tag-paid {
+  color: var(--paid);
+  background: var(--paid-soft);
+}
+
+.tag-free {
+  color: var(--ink-3);
+  background: var(--line-soft);
+}
+
+/* 数字强调 */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* 焦点可见性：全站统一 */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+button {
+  cursor: pointer;
+}
+
+/* 尊重系统减弱动效设置 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="detail-page">
     <van-nav-bar title="专辑详情" left-arrow fixed placeholder @click-left="router.back()">
       <template #right><button class="nav-action" type="button" aria-label="分享专辑" @click="shareAlbum"><van-icon name="share-o" /></button></template>
@@ -9,21 +9,22 @@
       <section class="hero">
         <div class="hero-backdrop" :style="{ backgroundImage: `url(${album.coverUrl})` }"></div>
         <div class="hero-content">
-          <img class="cover" :src="album.coverUrl" :alt="album.albumTitle" />
-          <div class="info"><span class="pay-type">{{ payTypeName }}</span><h1>{{ album.albumTitle }}</h1><p class="author"><van-icon name="user-o" /> {{ album.nickname || album.userInfoVo?.nickname || '知音主播' }}</p></div>
+          <img v-if="album.coverUrl && !coverFailed" class="cover" :src="album.coverUrl" :alt="album.albumTitle" @error="coverFailed = true" />
+          <span v-else class="cover cover-fallback" aria-hidden="true">{{ (plainTitle(album.albumTitle) || '知').slice(0, 1) }}</span>
+          <div class="info"><span class="pay-type">{{ payTypeName }}</span><h1>{{ plainTitle(album.albumTitle) }}</h1><p class="author"><van-icon name="user-o" /> {{ album.nickname || album.userInfoVo?.nickname || '知音主播' }}</p></div>
         </div>
         <div class="stats"><span><strong>{{ formatCount(stat.playStatNum) }}</strong> 播放</span><span><strong>{{ formatCount(stat.subscribeStatNum) }}</strong> 订阅</span><span><strong>{{ formatCount(stat.commentStatNum) }}</strong> 评论</span></div>
-        <div class="hero-actions"><van-button round block color="#ff0036" :disabled="!tracks.length || tracksLoading" @click="playFirst">播放第一集</van-button><van-button round plain color="#ff0036" :loading="subscribing" @click="toggleSubscribe">{{ subscribed ? '已订阅' : '+ 订阅' }}</van-button></div>
+        <div class="hero-actions"><van-button round block color="#007aff" :disabled="!tracks.length || tracksLoading" @click="playFirst">播放第一集</van-button><van-button round plain color="#007aff" :loading="subscribing" @click="toggleSubscribe">{{ subscribed ? '已订阅' : '+ 订阅' }}</van-button></div>
       </section>
       <div v-if="album.payType === '0102'" class="purchase-banner"><div><strong>VIP 专辑</strong><span>开通会员，收听会员专辑</span></div><van-button round size="small" color="#b88854" @click="router.push('/vipChannel')">查看会员</van-button></div>
-      <div v-else-if="album.payType === '0103'" class="purchase-banner"><div><strong>¥{{ formatAmount(album.price) }}{{ album.priceType === '0201' ? '/集' : '/专辑' }}</strong><span>{{ album.buyNotes || '价格与权益以确认订单为准' }}</span></div><van-button round size="small" color="#ff0036" @click="buyAlbum">{{ album.priceType === '0201' ? '选择声音' : '购买专辑' }}</van-button></div>
-      <van-tabs v-model:active="tab" sticky offset-top="46" color="#ff0036">
+      <div v-else-if="album.payType === '0103'" class="purchase-banner"><div><strong>¥{{ formatAmount(album.price) }}{{ album.priceType === '0201' ? '/集' : '/专辑' }}</strong><span>{{ album.buyNotes || '价格与权益以确认订单为准' }}</span></div><van-button round size="small" color="#007aff" @click="buyAlbum">{{ album.priceType === '0201' ? '选择声音' : '购买专辑' }}</van-button></div>
+      <van-tabs v-model:active="tab" sticky offset-top="46" color="#007aff">
         <van-tab title="专辑简介" name="intro"><div class="intro tingshu-card"><h2>关于这张专辑</h2><p>{{ plainIntro || '主播还没有留下简介。' }}</p><div v-if="album.sellingPoint" class="selling-point"><van-icon name="diamond-o" /> {{ album.sellingPoint }}</div></div></van-tab>
         <van-tab :title="`声音列表 ${trackTotal}`" name="tracks">
           <van-loading v-if="tracksLoading" class="detail-loading">正在加载声音</van-loading>
           <van-empty v-else-if="tracksError" :description="tracksError"><van-button size="small" @click="loadTracks">重新加载</van-button></van-empty>
           <div v-else class="track-list">
-            <button v-for="(track, index) in tracks" :key="track.trackId" type="button" class="track-item" @click="playTrack(track)"><span class="track-index">{{ track.orderNum || (trackPage - 1) * trackSize + index + 1 }}</span><span class="track-info"><span class="track-title">{{ track.trackTitle }}</span><span class="track-duration">{{ formatDuration(track.mediaDuration) }}<span v-if="track.isShowPaidMark"> · 付费声音</span></span></span><van-icon :name="track.isShowPaidMark ? 'lock' : 'play-circle-o'" size="24" color="#ff0036" /></button>
+            <button v-for="(track, index) in tracks" :key="track.trackId" type="button" class="track-item" @click="playTrack(track)"><span class="track-index">{{ track.orderNum || (trackPage - 1) * trackSize + index + 1 }}</span><span class="track-info"><span class="track-title">{{ plainTitle(track.trackTitle) }}</span><span class="track-duration">{{ formatDuration(track.mediaDuration) }}<span v-if="track.isShowPaidMark"> · 付费声音</span></span></span><van-icon :name="track.isShowPaidMark ? 'lock' : 'play-circle-o'" size="24" color="#007aff" /></button>
             <van-empty v-if="!tracks.length" description="暂无声音" />
             <van-pagination v-if="trackTotal > trackSize" v-model="trackPage" :total-items="trackTotal" :items-per-page="trackSize" :show-page-size="3" force-ellipses @change="loadTracks" />
           </div>
@@ -32,7 +33,7 @@
       </van-tabs>
       <footer class="detail-footer">知音听书 · 听见更大的世界</footer>
     </template>
-    <van-popup v-model:show="purchaseOpen" position="bottom" round :style="{ maxHeight: '70vh' }"><section class="purchase-panel"><header><h2>选择购买方案</h2><button type="button" aria-label="关闭购买方案" @click="purchaseOpen = false"><van-icon name="cross" /></button></header><p>{{ selectedTrack?.trackTitle }}</p><van-loading v-if="purchaseLoading">正在获取价格</van-loading><p v-else-if="purchaseError" class="purchase-error" role="alert">{{ purchaseError }}</p><button v-for="plan in trackPlans" v-else :key="plan.trackCount" type="button" class="purchase-plan" @click="confirmTrack(plan)"><span>{{ plan.name }}</span><strong>¥{{ formatAmount(plan.price) }}</strong><van-icon name="arrow" /></button><p class="purchase-note">实际价格、集数和折扣以服务端确认订单为准。</p></section></van-popup>
+    <van-popup v-model:show="purchaseOpen" position="bottom" round :style="{ maxHeight: '70vh' }"><section class="purchase-panel"><header><h2>选择购买方案</h2><button type="button" aria-label="关闭购买方案" @click="purchaseOpen = false"><van-icon name="cross" /></button></header><p>{{ plainTitle(selectedTrack?.trackTitle) }}</p><van-loading v-if="purchaseLoading">正在获取价格</van-loading><p v-else-if="purchaseError" class="purchase-error" role="alert">{{ purchaseError }}</p><button v-for="plan in trackPlans" v-else :key="plan.trackCount" type="button" class="purchase-plan" @click="confirmTrack(plan)"><span>{{ plan.name }}</span><strong>¥{{ formatAmount(plan.price) }}</strong><van-icon name="arrow" /></button><p class="purchase-note">实际价格、集数和折扣以服务端确认订单为准。</p></section></van-popup>
   </div>
 </template>
 
@@ -44,6 +45,7 @@ import { albumsApi } from '../../api/albums.js'
 import { userApi } from '../../api/user.js'
 import { orderApi, ITEM_TYPE, formatAmount } from '../../api/order.js'
 import { useUserStore } from '../../stores/user.js'
+import { plainTitle } from '../../utils/format.js'
 import CommentPanel from '../../components/CommentPanel.vue'
 
 const route = useRoute()
@@ -55,6 +57,7 @@ const stat = ref({})
 const subscribed = ref(false)
 const subscribing = ref(false)
 const loading = ref(true)
+const coverFailed = ref(false)
 const loadError = ref('')
 const tracks = ref([])
 const trackPage = ref(1)
@@ -203,47 +206,108 @@ onBeforeUnmount(() => { active = false; version++; trackVersion++; purchaseVersi
 </script>
 
 <style scoped>
-.detail-page { min-height: 100vh; background: #f7f8fa; padding-bottom: 20px; }
-.nav-action { border: 0; background: none; color: #555; font-size: 20px; }
+.detail-page { min-height: 100vh; background: var(--ground); padding-bottom: var(--sp-5); }
+.nav-action { border: 0; background: none; color: var(--ink-2); font-size: 20px; }
 .detail-loading { text-align: center; padding: 48px 0; }
-.hero { position: relative; isolation: isolate; overflow: hidden; padding: 24px 20px 20px; background: #fff; }
-.hero-backdrop { position: absolute; inset: -30px; background-size: cover; background-position: center; filter: blur(30px); opacity: .12; z-index: -1; }
-.hero-content { display: flex; align-items: flex-start; gap: 16px; }
-.cover { width: 116px; height: 116px; flex-shrink: 0; border-radius: 8px; object-fit: cover; box-shadow: 0 6px 14px #00000012; background: #eee; }
+
+/* Hero：专辑封面 + 信息 + 操作 */
+.hero { position: relative; isolation: isolate; overflow: hidden; padding: var(--sp-4) var(--sp-3) var(--sp-4); background: var(--surface); }
+.hero-backdrop { position: absolute; inset: -30px; background-size: cover; background-position: center; filter: blur(30px); opacity: .1; z-index: -1; }
+.hero-content { display: flex; align-items: flex-start; gap: var(--sp-3); }
+.cover { width: 112px; height: 112px; flex-shrink: 0; border-radius: var(--r-md); object-fit: cover; background: var(--line-soft); }
+.cover-fallback { display: grid; place-items: center; font-size: var(--fs-display); font-weight: 600; color: var(--ink-4); }
 .info { flex: 1; min-width: 0; }
-.pay-type { display: inline-block; color: #b88854; background: #fff7ed; border-radius: 3px; padding: 3px 6px; font-size: 10px; }
-h1 { margin: 7px 0 9px; font-size: 17px; line-height: 1.5; color: #333; font-weight: 600; overflow-wrap: anywhere; }
-.author { color: #999; margin: 0; font-size: 12px; }
-.stats { display: flex; justify-content: space-around; gap: 12px; color: #999; margin: 22px 0; font-size: 11px; }
-.stats strong { color: #555; font-weight: 500; margin-right: 3px; }
-.hero-actions { display: flex; gap: 12px; }
+.pay-type { display: inline-block; color: var(--vip); background: var(--vip-soft); border-radius: var(--r-sm); padding: 2px 6px; font-size: var(--fs-micro); }
+h1 { margin: 6px 0 8px; font-size: var(--fs-title); line-height: 1.4; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.author { color: var(--ink-3); margin: 0; font-size: var(--fs-meta); display: flex; align-items: center; gap: 4px; }
+.stats { display: flex; gap: var(--sp-5); color: var(--ink-3); margin: var(--sp-4) 0; font-size: var(--fs-meta); }
+.stats strong { color: var(--ink); font-weight: 600; margin-right: 3px; font-variant-numeric: tabular-nums; }
+.hero-actions { display: flex; gap: var(--sp-2); }
 .hero-actions > :first-child { flex: 1; }
 .hero-actions > :last-child { min-width: 96px; }
-.purchase-banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 10px 12px; padding: 14px; border: 1px solid #f1e5d6; border-radius: 8px; background: #fffaf2; }
-.purchase-banner strong { color: #b88854; font-size: 14px; font-weight: 500; }
-.purchase-banner span { display: block; max-width: 230px; margin-top: 4px; color: #b3a598; font-size: 11px; line-height: 1.5; }
-.intro { padding: 18px 8px; }
-.intro h2 { font-size: 15px; color: #333; margin: 0 0 14px; }
-.intro p { color: #666; white-space: pre-line; overflow-wrap: anywhere; line-height: 1.9; font-size: 13px; }
-.selling-point { padding: 12px; margin-top: 16px; background: #fff8ed; color: #ad875b; border-radius: 5px; font-size: 12px; }
-.track-list { background: #fff; }
-.track-item { display: flex; align-items: center; gap: 10px; box-sizing: border-box; width: 100%; border: 0; border-bottom: 1px solid #f4f4f4; background: #fff; padding: 17px 14px; text-align: left; }
-.track-index { width: 24px; flex-shrink: 0; text-align: center; color: #aaa; font-size: 12px; }
+
+/* 购买横幅 */
+.purchase-banner { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin: var(--sp-3) var(--sp-3) 0; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--vip-soft); border-radius: var(--r-lg); background: var(--vip-soft); }
+.purchase-banner strong { color: var(--vip); font-size: var(--fs-body); font-weight: 600; }
+.purchase-banner span { display: block; max-width: 260px; margin-top: 3px; color: var(--ink-3); font-size: var(--fs-meta); line-height: 1.5; }
+
+/* 简介 */
+.intro { padding: var(--sp-4); }
+.intro h2 { font-size: var(--fs-section); color: var(--ink); margin: 0 0 var(--sp-3); font-weight: 600; }
+.intro p { color: var(--ink-2); white-space: pre-line; overflow-wrap: anywhere; line-height: 1.85; font-size: var(--fs-body); margin: 0; }
+.selling-point { padding: var(--sp-3); margin-top: var(--sp-4); background: var(--brand-soft); color: var(--brand); border-radius: var(--r-md); font-size: var(--fs-meta); display: flex; align-items: center; gap: 6px; }
+
+/* 声音列表 */
+.track-list { background: var(--surface); }
+.track-item { display: flex; align-items: center; gap: var(--sp-2); box-sizing: border-box; width: 100%; border: 0; border-bottom: 1px solid var(--line-soft); background: var(--surface); padding: var(--sp-3); text-align: left; }
+.track-item:hover { background: var(--ground); }
+.track-index { width: 24px; flex-shrink: 0; text-align: center; color: var(--ink-4); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
 .track-info { flex: 1; min-width: 0; }
-.track-title { display: block; font-size: 14px; color: #333; line-height: 1.6; }
-.track-duration { display: block; margin-top: 5px; color: #aaa; font-size: 11px; }
-.track-list :deep(.van-pagination) { padding: 20px 16px; }
-.detail-footer { padding: 30px 12px 10px; color: #bbb; font-size: 11px; text-align: center; }
-.purchase-panel { padding: 22px 18px 30px; }
+.track-title { display: block; font-size: var(--fs-body); color: var(--ink); line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track-duration { display: block; margin-top: 3px; color: var(--ink-4); font-size: var(--fs-micro); }
+.track-list :deep(.van-pagination) { padding: var(--sp-4); }
+.detail-footer { padding: var(--sp-6) var(--sp-3) var(--sp-3); color: var(--ink-4); font-size: var(--fs-micro); text-align: center; }
+
+/* 购买弹层 */
+.purchase-panel { padding: var(--sp-5) var(--sp-4) var(--sp-6); }
 .purchase-panel header { display: flex; align-items: center; justify-content: space-between; }
-.purchase-panel header h2 { font-size: 17px; margin: 0; }
-.purchase-panel header button { border: 0; background: none; color: #888; }
-.purchase-panel > p { font-size: 12px; line-height: 1.8; color: #888; }
-.purchase-plan { display: flex; width: 100%; align-items: center; gap: 12px; padding: 17px 8px; margin-bottom: 10px; border: 1px solid #eee; border-radius: 6px; color: #555; background: #fff; font-size: 14px; text-align: left; }
+.purchase-panel header h2 { font-size: var(--fs-title); margin: 0; font-weight: 600; }
+.purchase-panel header button { border: 0; background: none; color: var(--ink-3); }
+.purchase-panel > p { font-size: var(--fs-meta); line-height: 1.7; color: var(--ink-3); }
+.purchase-plan { display: flex; width: 100%; align-items: center; gap: var(--sp-3); padding: var(--sp-4) var(--sp-3); margin-bottom: var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-lg); color: var(--ink); background: var(--surface); font-size: var(--fs-body); text-align: left; }
+.purchase-plan:hover { border-color: var(--brand-line); background: var(--brand-soft); }
 .purchase-plan span { flex: 1; }
-.purchase-plan strong { color: #ff0036; font-size: 16px; }
-.purchase-panel .purchase-error { color: #cc4d5b; }
+.purchase-plan strong { color: var(--brand); font-size: var(--fs-title); font-variant-numeric: tabular-nums; }
+.purchase-panel .purchase-error { color: var(--paid); }
 button { cursor: pointer; }
-button:focus-visible { outline: 2px solid #ff0036; outline-offset: 3px; }
-@media (max-width: 350px) { .hero { padding: 18px 14px; } .cover { width: 96px; height: 96px; } h1 { font-size: 15px; } }
+button:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+
+/* ============================================================
+   桌面端：专辑信息与内容双栏
+   ============================================================ */
+@media (min-width: 960px) {
+  .detail-page :deep(.van-nav-bar) {
+    max-width: none;
+    left: var(--sidebar-w);
+    right: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .detail-page :deep(.van-nav-bar__title) {
+    font-size: var(--fs-section);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .hero {
+    max-width: var(--shell-max);
+    margin: 0 auto;
+    padding: var(--sp-5);
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    grid-template-areas:
+      'cover info'
+      'cover stats'
+      'cover actions';
+    gap: 0 var(--sp-5);
+    align-items: start;
+  }
+
+  .hero-content { display: contents; }
+  .cover { grid-area: cover; width: 200px; height: 200px; }
+  .info { grid-area: info; }
+  .stats { grid-area: stats; justify-content: flex-start; margin: var(--sp-3) 0; }
+  .hero-actions { grid-area: actions; max-width: 420px; }
+
+  .purchase-banner { max-width: var(--shell-max); margin: var(--sp-4) auto 0; padding: var(--sp-4) var(--sp-5); }
+
+  .detail-page :deep(.van-tabs) { max-width: var(--shell-max); margin: var(--sp-4) auto 0; background: transparent; }
+  .detail-page :deep(.van-tabs__wrap) { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg) var(--r-lg) 0 0; }
+  .detail-page :deep(.van-tab__panel) { background: transparent; }
+  .intro, .track-list { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 var(--r-lg) var(--r-lg); overflow: hidden; }
+  .track-item { padding: var(--sp-3) var(--sp-4); }
+}
+
+@media (max-width: 350px) { .cover { width: 96px; height: 96px; } h1 { font-size: var(--fs-section); } }
 </style>

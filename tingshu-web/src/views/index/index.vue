@@ -1,50 +1,100 @@
 <template>
   <div class="index-page">
+    <!-- 移动端顶栏 -->
     <header class="home-header">
-      <div class="brand"><van-icon name="service" aria-hidden="true" /><strong>知音听书</strong></div>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">知</span>
+        <span class="brand-text">
+          <strong>知音听书</strong>
+          <small>听见更大的世界</small>
+        </span>
+      </div>
       <button class="search-entry" type="button" @click="router.push('/search')">
-        <van-icon name="search" aria-hidden="true" /><span>搜索专辑、主播和声音</span>
+        <van-icon name="search" aria-hidden="true" /><span>搜索专辑、主播</span>
       </button>
     </header>
-    <van-tabs v-model:active="activeTab" sticky color="#ff3547" title-active-color="#222" @change="loadChannel">
+
+    <van-tabs
+      v-model:active="activeTab"
+      sticky
+      class="channel-tabs"
+      title-active-color="#007aff"
+      @change="loadChannel"
+    >
       <van-tab v-for="cat in categories" :key="cat.id" :title="cat.name" :name="cat.id" />
     </van-tabs>
-    <section class="carousel" aria-label="精选推荐">
-      <van-swipe :autoplay="reduceMotion ? 0 : 5000" indicator-color="#fff" :show-indicators="true">
-        <van-swipe-item v-for="(banner, index) in banners" :key="banner">
-          <img :src="banner" :alt="`知音听书精选推荐 ${index + 1}`" :loading="index ? 'lazy' : 'eager'" />
-        </van-swipe-item>
-      </van-swipe>
-    </section>
-    <nav v-if="topCategories.length" class="category-shortcuts" aria-label="频道分类">
-      <button v-for="cat in topCategories" :key="cat.id" type="button" @click="openSearch(cat)">{{ cat.name }}</button>
-      <button type="button" class="all-categories" @click="router.push({ path: '/categories', query: { category1Id: activeTab } })">全部分类 <van-icon name="arrow" /></button>
-    </nav>
-    <div v-if="loading" class="loading-wrap"><van-skeleton v-for="n in 3" :key="n" title avatar :row="3" /></div>
-    <van-empty v-else-if="failed" image="network" description="频道加载失败，请检查网络后重试">
-      <van-button size="small" round @click="retry">重新加载</van-button>
-    </van-empty>
-    <template v-else>
-      <section v-for="(group, index) in groups" :key="group.baseCategory3?.id || index" class="recommend-group">
-        <div class="section-heading">
-          <h2>{{ group.baseCategory3?.name || '频道精选' }}</h2>
-          <button type="button" @click="openSearch(group.baseCategory3, group.list?.[0])">查看全部 <van-icon name="arrow" /></button>
-        </div>
-        <div class="album-grid">
-          <router-link v-for="album in group.list" :key="album.id" :to="`/detail/${album.id}`" class="album-card">
-            <div class="cover-wrap">
-              <img :src="album.coverUrl" :alt="album.albumTitle" loading="lazy" />
-              <span v-if="payLabels[album.payType]" class="pay-label">{{ payLabels[album.payType] }}</span>
-              <span class="play-badge"><van-icon name="play-circle-o" /> {{ formatCount(album.playStatNum) }}</span>
-            </div>
-            <h3>{{ album.albumTitle }}</h3>
-            <p>{{ album.includeTrackCount ?? 0 }} 集<span v-if="album.announcerName"> · {{ album.announcerName }}</span></p>
-          </router-link>
-        </div>
+
+    <div class="page home-body">
+      <!-- 精选推荐 -->
+      <section class="carousel" aria-label="精选推荐">
+        <van-swipe :autoplay="reduceMotion ? 0 : 5000" indicator-color="#fff" :show-indicators="true">
+          <van-swipe-item v-for="(banner, index) in banners" :key="banner">
+            <img :src="banner" :alt="`知音听书精选推荐 ${index + 1}`" :loading="index ? 'lazy' : 'eager'" />
+          </van-swipe-item>
+        </van-swipe>
       </section>
-      <van-empty v-if="!groups.length" description="这个频道还没有专辑，换个分类看看" />
-      <p v-else class="end-note">听见更大的世界</p>
-    </template>
+
+      <!-- 频道快捷入口 -->
+      <nav v-if="topCategories.length" class="category-shortcuts" aria-label="频道分类">
+        <button v-for="cat in topCategories" :key="cat.id" type="button" @click="openSearch(cat)">
+          {{ cat.name }}
+        </button>
+        <button type="button" class="all-categories" @click="goAllCategories">
+          全部分类 <van-icon name="arrow" />
+        </button>
+      </nav>
+
+      <div v-if="loading" class="loading-wrap"><van-skeleton v-for="n in 3" :key="n" title avatar :row="3" /></div>
+      <van-empty v-else-if="failed" image="network" description="频道加载失败，请检查网络后重试">
+        <van-button size="small" round @click="retry">重新加载</van-button>
+      </van-empty>
+
+      <template v-else>
+        <section v-for="(group, index) in groups" :key="group.baseCategory3?.id || index" class="recommend-group">
+          <div class="section">
+            <div class="section-head">
+              <h2 class="section-title">{{ group.baseCategory3?.name || '频道精选' }}</h2>
+              <button type="button" class="section-action" @click="openSearch(group.baseCategory3, group.list?.[0])">
+                查看全部 <van-icon name="arrow" />
+              </button>
+            </div>
+            <div class="album-grid">
+              <router-link v-for="album in group.list" :key="album.id" :to="`/detail/${album.id}`" class="album-card">
+                <div class="cover-wrap">
+                  <img
+                    v-if="album.coverUrl && !brokenCovers.has(album.id)"
+                    :src="album.coverUrl"
+                    :alt="plainTitle(album.albumTitle)"
+                    loading="lazy"
+                    @error="markBroken(album.id)"
+                  />
+                  <span v-else class="cover-fallback" aria-hidden="true">
+                    {{ (plainTitle(album.albumTitle) || '知').slice(0, 1) }}
+                  </span>
+                  <span v-if="payLabels[album.payType]" class="pay-label" :class="payClass[album.payType]">
+                    {{ payLabels[album.payType] }}
+                  </span>
+                  <span class="play-badge"><van-icon name="play-circle-o" /> {{ formatCount(album.playStatNum) }}</span>
+                </div>
+                <h3>
+                  <template v-for="(part, index) in titleParts(album.albumTitle)" :key="index">
+                    <mark v-if="part.highlight">{{ part.text }}</mark>
+                    <template v-else>{{ part.text }}</template>
+                  </template>
+                </h3>
+                <p>
+                  {{ album.includeTrackCount ?? 0 }} 集
+                  <span v-if="album.announcerName" class="dot">·</span>
+                  <span v-if="album.announcerName">{{ album.announcerName }}</span>
+                </p>
+              </router-link>
+            </div>
+          </div>
+        </section>
+        <van-empty v-if="!groups.length" description="这个频道还没有专辑，换个分类看看" />
+        <p v-else class="end-note">听见更大的世界</p>
+      </template>
+    </div>
   </div>
 </template>
 
@@ -52,6 +102,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { categoryApi } from '../../api/category.js'
+import { titleParts, plainTitle } from '../../utils/format.js'
 import bannerA from '../../assets/carousel/a.png'
 import bannerB from '../../assets/carousel/b.png'
 import bannerC from '../../assets/carousel/c.png'
@@ -59,10 +110,12 @@ import bannerC from '../../assets/carousel/c.png'
 const router = useRouter()
 const banners = [bannerA, bannerB, bannerC]
 const payLabels = { '0101': '免费', '0102': 'VIP免费', '0103': '付费' }
+const payClass = { '0101': 'tag-free', '0102': 'tag-vip', '0103': 'tag-paid' }
 const categories = ref([])
 const activeTab = ref(0)
 const groups = ref([])
 const topCategories = ref([])
+const brokenCovers = ref(new Set())
 const loading = ref(true)
 const failed = ref(false)
 const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -120,6 +173,10 @@ async function loadChannel(category1Id) {
   }
 }
 
+function markBroken(id) {
+  brokenCovers.value = new Set(brokenCovers.value).add(id)
+}
+
 function openSearch(category, album = {}) {
   router.push({ path: '/search', query: {
     category1Id: activeTab.value,
@@ -129,6 +186,18 @@ function openSearch(category, album = {}) {
   } })
 }
 
+/** 「全部分类」：带着当前所在的一级分类进入分类页 */
+function goAllCategories() {
+  const current = categories.value.find((cat) => cat.id === activeTab.value)
+  router.push({
+    path: '/categories',
+    query: {
+      category1Id: activeTab.value,
+      ...(current?.name ? { pageTitle: current.name } : {})
+    }
+  })
+}
+
 function formatCount(value) {
   const n = Number(value) || 0
   return n >= 10000 ? `${(n / 10000).toFixed(1).replace(/\.0$/, '')}万` : n.toLocaleString()
@@ -136,32 +205,334 @@ function formatCount(value) {
 </script>
 
 <style scoped>
-.index-page { min-height: 100vh; background: #fff; padding-bottom: 18px; }
-.home-header { display: flex; align-items: center; gap: 16px; padding: 18px 16px 12px; }
-.brand { display: flex; align-items: center; gap: 6px; white-space: nowrap; color: #222; font-size: 17px; }
-.brand .van-icon { color: #ff3547; font-size: 24px; }
-.search-entry { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; border: 0; border-radius: 20px; background: #f4f4f4; padding: 10px 12px; color: #888; font-size: 12px; cursor: pointer; }
-.search-entry span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.search-entry .van-icon { font-size: 17px; }
-.carousel { margin: 12px 12px 8px; overflow: hidden; border-radius: 9px; }
-.carousel img { display: block; width: 100%; aspect-ratio: 750 / 330; object-fit: cover; }
-.category-shortcuts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px 10px 16px; gap: 8px; border-bottom: 8px solid #f7f8fa; }
-.category-shortcuts button { padding: 9px 2px; border: 0; border-radius: 4px; font-size: 12px; color: #444; background: #f6f6f6; cursor: pointer; }
-.category-shortcuts .all-categories { color: #f3384c; background: #fff3f4; }
-.loading-wrap { padding: 28px 0; display: grid; gap: 28px; }
-.recommend-group { padding: 19px 12px 4px; }
-.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; }
-.section-heading h2 { margin: 0; color: #222; font-size: 17px; font-weight: 650; }
-.section-heading button { background: none; border: 0; color: #909090; font-size: 12px; cursor: pointer; }
-.album-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 10px; }
-.album-card { min-width: 0; color: inherit; text-decoration: none; }
-.cover-wrap { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 6px; background: #f2f3f5; }
-.cover-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.pay-label { position: absolute; top: 0; left: 0; background: #ff3547; color: #fff; padding: 3px 6px; font-size: 10px; border-radius: 0 0 5px 0; }
-.play-badge { position: absolute; bottom: 0; left: 0; right: 0; display: flex; gap: 4px; align-items: center; padding: 10px 6px 5px; color: #fff; background: linear-gradient(transparent, #000b); font-size: 11px; }
-.album-card h3 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; line-height: 1.5; font-weight: 500; margin: 8px 0 4px; }
-.album-card p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; font-size: 11px; color: #999; }
-.end-note { margin: 32px 0 16px; text-align: center; color: #bbb; font-size: 11px; letter-spacing: 2px; }
-button:focus-visible, a:focus-visible { outline: 2px solid #ff3547; outline-offset: 3px; }
-@media (max-width: 350px) { .home-header { gap: 10px; padding-inline: 12px; } .brand { font-size: 15px; } .album-grid { gap: 16px 8px; } }
+.index-page {
+  min-height: 100vh;
+  background: var(--ground);
+  padding-bottom: var(--sp-5);
+}
+
+/* 移动端顶栏：桌面端隐藏（桌面端由 App.vue 提供顶栏） */
+.home-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3);
+  background: var(--surface);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.brand-text strong {
+  font-size: 16px;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
+
+.brand-text small {
+  font-size: 10px;
+  color: var(--ink-4);
+}
+
+.search-entry {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 32px;
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--ground);
+  color: var(--ink-4);
+  font-size: var(--fs-meta);
+  text-align: left;
+}
+
+.search-entry:hover {
+  background: var(--line-soft);
+}
+
+/* 频道 tabs */
+.channel-tabs {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.channel-tabs :deep(.van-tabs__wrap) {
+  height: 44px;
+}
+
+.channel-tabs :deep(.van-tab) {
+  font-size: 15px;
+  color: var(--ink-3);
+  padding: 0 var(--sp-4);
+}
+
+.channel-tabs :deep(.van-tab--active) {
+  font-weight: 600;
+}
+
+.channel-tabs :deep(.van-tabs__line) {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--brand);
+}
+
+.home-body {
+  padding-top: var(--sp-3);
+}
+
+/* 轮播 */
+.carousel {
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.carousel :deep(.van-swipe) {
+  aspect-ratio: 750 / 330;
+}
+
+.carousel :deep(.van-swipe-item img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.carousel :deep(.van-swipe__indicators) {
+  bottom: 8px;
+}
+
+/* 分类快捷入口 */
+.category-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+
+.category-shortcuts button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--ground);
+  color: var(--ink-2);
+  font-size: var(--fs-meta);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.category-shortcuts button:hover {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.category-shortcuts .all-categories {
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 500;
+}
+
+.loading-wrap {
+  padding: var(--sp-4) 0;
+}
+
+/* 专辑网格：手机 3 列，桌面 5 列 */
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4) var(--sp-3);
+}
+
+.album-card {
+  display: block;
+  min-width: 0;
+}
+
+.cover-wrap {
+  position: relative;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--line-soft);
+  aspect-ratio: 1;
+}
+
+.cover-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.album-card:hover .cover-wrap img {
+  transform: scale(1.04);
+}
+
+.cover-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--ink-4);
+}
+
+.album-card h3 mark {
+  background: transparent;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.pay-label {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.play-badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: var(--fs-micro);
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.album-card h3 {
+  margin: var(--sp-2) 0 3px;
+  font-size: var(--fs-body);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.album-card:hover h3 {
+  color: var(--brand);
+}
+
+.album-card p {
+  margin: 0;
+  font-size: var(--fs-meta);
+  color: var(--ink-4);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.album-card .dot {
+  margin: 0 3px;
+}
+
+.end-note {
+  margin: var(--sp-6) 0 var(--sp-4);
+  text-align: center;
+  font-size: var(--fs-meta);
+  color: var(--ink-4);
+  letter-spacing: 0.12em;
+}
+
+/* ============================================================
+   桌面端
+   ============================================================ */
+@media (min-width: 960px) {
+  .home-header {
+    display: none;
+  }
+
+  .channel-tabs {
+    background: transparent;
+    border-bottom: 0;
+    margin-bottom: var(--sp-4);
+  }
+
+  .channel-tabs :deep(.van-tabs__wrap) {
+    height: 40px;
+  }
+
+  .channel-tabs :deep(.van-tab) {
+    font-size: 15px;
+  }
+
+  .home-body {
+    padding-top: 0;
+  }
+
+  .carousel {
+    margin-bottom: var(--sp-3);
+  }
+
+  .category-shortcuts {
+    margin-top: 0;
+    margin-bottom: var(--sp-2);
+  }
+
+  .album-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--sp-5) var(--sp-4);
+  }
+
+  .album-card h3 {
+    font-size: var(--fs-body);
+  }
+}
+
+@media (min-width: 1280px) {
+  .album-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
 </style>

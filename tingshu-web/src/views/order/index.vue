@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <main class="orders-page">
     <van-nav-bar title="我的订单" left-arrow @click-left="goBack" />
     <van-pull-refresh v-model="refreshing" @refresh="refreshOrders">
@@ -7,40 +7,47 @@
       </div>
       <section v-else-if="error && !orders.length" class="state-panel" role="alert">
         <van-empty image="error" :description="error" />
-        <van-button color="#EE0A25" plain @click="refreshOrders">重新加载</van-button>
+        <van-button type="primary" plain @click="refreshOrders">重新加载</van-button>
       </section>
       <van-empty v-else-if="!orders.length" description="暂无订单，购买的专辑、声音和会员会显示在这里">
-        <van-button color="#EE0A25" round @click="router.push('/index')">去发现好书</van-button>
+        <van-button type="primary" round @click="router.push('/index')">去发现好书</van-button>
       </van-empty>
       <div v-else class="order-list">
         <article v-for="order in orders" :key="order.orderNo" class="order-card">
           <button class="order-link" type="button" @click="openOrder(order.orderNo)">
             <div class="order-heading">
               <span class="order-number">订单号：{{ order.orderNo }}</span>
-              <span class="order-status" :class="{ unpaid: order.orderStatus === ORDER_STATUS.Unpaid }">
+              <span
+                class="tag order-status"
+                :class="{
+                  'status-paid': order.orderStatus === ORDER_STATUS.Paid,
+                  'status-unpaid': order.orderStatus === ORDER_STATUS.Unpaid,
+                  'status-cancelled': order.orderStatus === ORDER_STATUS.Cancelled
+                }"
+              >
                 {{ orderStatusName(order) }}
               </span>
             </div>
             <div v-for="(item, index) in order.orderDetailList || []" :key="item.id || `${item.itemId}-${index}`" class="goods">
-              <van-image class="cover" width="50" height="50" fit="cover" radius="5" :src="item.itemUrl" alt="商品封面" />
+              <van-image class="cover" width="50" height="50" fit="cover" radius="6" :src="item.itemUrl" alt="商品封面" />
               <span class="goods-name">{{ item.itemName }}</span>
-              <span class="goods-price">￥{{ formatAmount(item.itemPrice) }}</span>
+              <span class="goods-price num">￥{{ formatAmount(item.itemPrice) }}</span>
             </div>
             <p v-if="!order.orderDetailList?.length" class="fallback-title">{{ order.orderTitle || '查看商品明细' }}</p>
             <div class="order-footer">
               <time>{{ order.createTime || '下单时间待确认' }}</time>
-              <span>共 {{ order.orderDetailList?.length || '—' }} 件，合计 <strong>￥{{ formatAmount(order.orderAmount) }}</strong></span>
+              <span>共 {{ order.orderDetailList?.length || '—' }} 件，合计 <strong class="num">￥{{ formatAmount(order.orderAmount) }}</strong></span>
             </div>
           </button>
           <div class="card-actions">
-            <van-button size="small" round :plain="order.orderStatus !== ORDER_STATUS.Unpaid" color="#EE0A25" @click="openOrder(order.orderNo)">
+            <van-button size="small" round :plain="order.orderStatus !== ORDER_STATUS.Unpaid" type="primary" @click="openOrder(order.orderNo)">
               {{ order.orderStatus === ORDER_STATUS.Unpaid ? '查看并支付' : '查看详情' }}
             </van-button>
           </div>
         </article>
         <div v-if="error" class="page-error" role="alert">{{ error }}</div>
         <div class="pagination">
-          <van-button v-if="!finished || error" block plain :loading="loading" :disabled="loading" color="#EE0A25" @click="loadMore">
+          <van-button v-if="!finished || error" block plain :loading="loading" :disabled="loading" type="primary" @click="loadMore">
             {{ error ? '重试加载' : '加载更多' }}
           </van-button>
           <span v-else>已显示全部订单</span>
@@ -112,25 +119,205 @@ onBeforeUnmount(() => { disposed = true; version += 1 })
 </script>
 
 <style scoped>
-.orders-page { min-height: 100vh; background: #F8F8F8; color: #373737; padding-bottom: 20px; }
-.orders-page :deep(.van-pull-refresh) { min-height: calc(100vh - 66px); }
-.loading-state { padding: 80px 0; }
-.state-panel { text-align: center; padding-bottom: 25px; }
-.order-card { background: #fff; padding: 12.5px; margin: 12.5px 12.5px 0; border-radius: 5px; }
-.order-link { display: block; border: 0; background: none; padding: 0; width: 100%; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.order-heading { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 13px; line-height: 25px; }
-.order-number { min-width: 0; flex: 1; overflow-wrap: anywhere; }
-.order-status { color: #969696; flex-shrink: 0; }
-.unpaid { color: #EE0A25; }
-.goods { display: flex; align-items: flex-start; padding-bottom: 10px; }
-.cover { flex-shrink: 0; }
-.goods-name { flex: 1; min-width: 0; margin: 0 10px; line-height: 20px; font-size: 13px; color: #444; overflow-wrap: anywhere; }
-.goods-price { font-size: 12px; line-height: 25px; text-align: right; flex-shrink: 0; }
-.order-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin-top: 2px; color: #969696; font-size: 12px; line-height: 22px; }
-.order-footer strong { color: #373737; font-weight: 500; }
-.card-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
-.fallback-title { font-size: 14px; margin: 0 0 10px; }
-.pagination { margin: 20px 12.5px; text-align: center; font-size: 12px; color: #969696; }
-.page-error { padding: 15px; color: #EE0A25; text-align: center; font-size: 13px; }
-.order-link:focus-visible { outline: 2px solid #ED6A0C; outline-offset: 4px; }
+.orders-page {
+  min-height: 100vh;
+  background: var(--ground);
+  color: var(--ink);
+  padding-bottom: var(--sp-6);
+}
+
+.orders-page :deep(.van-pull-refresh) {
+  min-height: calc(100vh - 66px);
+}
+
+.loading-state {
+  padding: 80px 0;
+}
+
+.state-panel {
+  text-align: center;
+  padding-bottom: var(--sp-5);
+}
+
+.order-list {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+
+.order-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+}
+
+.order-link {
+  display: block;
+  border: 0;
+  background: none;
+  padding: 0;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+
+.order-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  font-size: var(--fs-meta);
+  line-height: 1.6;
+}
+
+.order-number {
+  min-width: 0;
+  flex: 1;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.order-status {
+  flex-shrink: 0;
+  color: var(--ink-3);
+  background: var(--line-soft);
+}
+
+.order-status.status-paid {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.order-status.status-unpaid {
+  color: var(--paid);
+  background: var(--paid-soft);
+}
+
+.order-status.status-cancelled {
+  color: var(--ink-3);
+  background: var(--line-soft);
+}
+
+.goods {
+  display: flex;
+  align-items: flex-start;
+  padding-bottom: var(--sp-3);
+}
+
+.cover {
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+}
+
+.goods-name {
+  flex: 1;
+  min-width: 0;
+  margin: 0 var(--sp-3);
+  line-height: 1.6;
+  font-size: var(--fs-body);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.goods-price {
+  font-size: var(--fs-meta);
+  line-height: 25px;
+  text-align: right;
+  flex-shrink: 0;
+  color: var(--ink-2);
+}
+
+.fallback-title {
+  font-size: var(--fs-body);
+  color: var(--ink-2);
+  margin: 0 0 var(--sp-3);
+}
+
+.order-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-3);
+  margin-top: var(--sp-1);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-3);
+  font-size: var(--fs-meta);
+  line-height: 1.7;
+}
+
+.order-footer strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--sp-3);
+}
+
+.pagination {
+  margin: var(--sp-4) 0 0;
+  text-align: center;
+  font-size: var(--fs-meta);
+  color: var(--ink-3);
+}
+
+.page-error {
+  padding: var(--sp-4);
+  color: var(--paid);
+  text-align: center;
+  font-size: var(--fs-body);
+}
+
+.order-link:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+
+/* ============================================================
+   桌面端
+   ============================================================ */
+@media (min-width: 960px) {
+  .orders-page :deep(.van-nav-bar) {
+    background: transparent;
+  }
+
+  .orders-page :deep(.van-nav-bar__title) {
+    font-size: var(--fs-title);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .order-list {
+    max-width: var(--shell-max);
+    margin: 0 auto;
+    padding: var(--sp-5);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-4);
+    align-items: start;
+  }
+
+  .pagination {
+    grid-column: 1 / -1;
+    max-width: 420px;
+    margin: var(--sp-4) auto 0;
+  }
+
+  .goods-name {
+    line-height: 1.7;
+  }
+}
+
+@media (min-width: 1280px) {
+  .order-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 </style>
