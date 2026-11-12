@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -53,6 +54,14 @@ public class WxPayApiController {
         return Result.ok(map);
     }
 
+    @LoginVerification
+    @Operation(summary = "创建微信 Native 扫码支付，金额和归属由服务端核验")
+    @PostMapping("/createNative/{paymentType}/{orderNo}")
+    public Result<Map<String, String>> createNative(@PathVariable String paymentType,
+                                                   @PathVariable String orderNo) {
+        return Result.ok(wxPayService.createNative(paymentType, orderNo, AuthContextHolder.getUserId()));
+    }
+
     /**
      * 【修复#5】微信支付成功回调通知（APIV3）
      * https://pay.weixin.qq.com/docs/merchant/apis/jsapi-payment/payment-notice.html
@@ -81,6 +90,7 @@ public class WxPayApiController {
             //2. 验签 + 解密报文（非法/伪造请求在 parse 内抛出异常）
             NotificationParser parser = new NotificationParser(rsaAutoCertificateConfig);
             Transaction transaction = parser.parse(requestParam, Transaction.class);
+            validateSuccessfulTransaction(transaction, null);
             log.info("[支付回调] 验签通过，orderNo={}, tradeState={}",
                     transaction.getOutTradeNo(), transaction.getTradeState());
             //3. 金额校验 + 幂等更新支付记录并发送 MQ（见 PaymentInfoServiceImpl）
@@ -103,15 +113,33 @@ public class WxPayApiController {
     @GetMapping("/queryPayStatus/{orderNo}")
     public Result queryPayStatus(@PathVariable String orderNo) {
         //调用方法根据订单编号查询支付状态，返回Transaction
-        Transaction transaction = wxPayService.queryPayStatus(orderNo);
+        Transaction transaction = wxPayService.queryPayStatus(orderNo, AuthContextHolder.getUserId());
         //Transaction对象判断是否成功
         // "trade_state" : "SUCCESS",
         if(transaction != null && transaction.getTradeState()==Transaction.TradeStateEnum.SUCCESS) {
+            validateSuccessfulTransaction(transaction, orderNo);
             //微信支付成功调用方法更新订单状态、支付记录状态、和用户购买记录
             //【修复#5】updatePaymentStatus 已幂等化：轮询与 notify 回调并发/重复到达不会重复发 MQ
             paymentInfoService.updatePaymentStatus(transaction);
             return Result.ok(true);
         }
         return Result.ok(false);
+    }
+
+    private void validateSuccessfulTransaction(Transaction transaction, String expectedOrderNo) {
+        Assert.notNull(transaction, "微信支付结果不能为空");
+        Assert.isTrue(transaction.getTradeState() == Transaction.TradeStateEnum.SUCCESS, "微信支付尚未成功");
+        Assert.hasText(transaction.getOutTradeNo(), "微信支付结果缺少订单号");
+        if (expectedOrderNo != null) {
+            Assert.isTrue(expectedOrderNo.equals(transaction.getOutTradeNo()), "微信返回的订单号不一致");
+        }
+        Assert.hasText(wxPayV3Config.getMerchantId(), "微信商户号未配置");
+        Assert.hasText(wxPayV3Config.getAppid(), "微信应用未配置");
+        Assert.isTrue(wxPayV3Config.getMerchantId().equals(transaction.getMchid()), "微信支付商户不匹配");
+        Assert.isTrue(wxPayV3Config.getAppid().equals(transaction.getAppid()), "微信支付应用不匹配");
+        Assert.notNull(transaction.getAmount(), "微信支付结果缺少金额");
+        Assert.isTrue("CNY".equals(transaction.getAmount().getCurrency()), "微信支付币种不匹配");
+        Assert.isTrue(transaction.getAmount().getTotal() != null && transaction.getAmount().getTotal() > 0,
+                "微信支付金额无效");
     }
 }

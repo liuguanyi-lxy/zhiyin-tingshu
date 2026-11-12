@@ -46,6 +46,9 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/user/wxLogin/wxLogin/**",
             // H5 网页端开发登录（后端有 tingshu.h5.dev-login 属性门禁，默认关闭）
             "/api/user/wxLogin/devLogin/**",
+            // H5 手机号密码登录与注册（同属多端登录体系）
+            "/api/user/wxLogin/phoneLogin",
+            "/api/user/wxLogin/register",
             // 微信支付回调（微信服务器无 token，安全性由支付验签保证，见 WxPayApiController#notify）
             "/api/payment/wxPay/notify",
             // WebSocket 握手（浏览器无法携带自定义 header）

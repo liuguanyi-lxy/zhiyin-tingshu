@@ -9,6 +9,8 @@ import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.result.ResultCodeEnum;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.vo.account.AccountLockVo;
+import com.atguigu.tingshu.vo.account.AccountRecordVo;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +39,20 @@ public class UserAccountApiController {
 		// 调用服务层方法
 		return Result.ok(userAccountService.getAvailableAmount(AuthContextHolder.getUserId()));
 	}
+
+    @LoginVerification
+    @Operation(summary = "当前用户消费记录分页")
+    @GetMapping("findUserConsumePage/{page}/{limit}")
+    public Result<Page<AccountRecordVo>> findUserConsumePage(@PathVariable("page") long page, @PathVariable("limit") long limit) {
+        return Result.ok(userAccountService.findUserConsumePage(AuthContextHolder.getUserId(), page, limit));
+    }
+
+    @LoginVerification
+    @Operation(summary = "当前用户已支付充值记录分页")
+    @GetMapping("findUserRechargePage/{page}/{limit}")
+    public Result<Page<AccountRecordVo>> findUserRechargePage(@PathVariable("page") long page, @PathVariable("limit") long limit) {
+        return Result.ok(userAccountService.findUserRechargePage(AuthContextHolder.getUserId(), page, limit));
+    }
 
 	//检查账户余额，充足则扣减余额并且添加对应的购买记录
 	@Operation(summary = "检查账户余额，充足则扣减余额并且添加对应的购买记录")

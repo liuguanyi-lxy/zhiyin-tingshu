@@ -8,6 +8,10 @@ import com.atguigu.tingshu.common.handler.GlobalExceptionHandler;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.result.ResultCodeEnum;
 import com.atguigu.tingshu.vo.account.AccountLockVo;
+import com.atguigu.tingshu.vo.account.AccountRecordVo;
+import com.atguigu.tingshu.common.login.LoginVerification;
+import com.atguigu.tingshu.common.util.AuthContextHolder;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -20,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 class AccountDeductSecurityTest {
@@ -87,6 +92,30 @@ class AccountDeductSecurityTest {
                 .header(AccountInternalConstant.HEADER, TEST_CREDENTIAL))
                 .andExpect(jsonPath("$.code").value(ResultCodeEnum.SUCCESS.getCode()));
         verify(service).addUserAccount(8L);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"findUserConsumePage", "findUserRechargePage"})
+    void recordPagesRequireLoginAndIgnoreCallerSuppliedUserId(String method) throws Exception {
+        var endpoint = UserAccountApiController.class.getMethod(method, long.class, long.class);
+        assertNotNull(endpoint.getAnnotation(LoginVerification.class));
+        assertTrue(endpoint.getAnnotation(LoginVerification.class).required());
+        UserAccountService service = mock(UserAccountService.class);
+        Page<AccountRecordVo> page = new Page<>(1, 10, 0);
+        if (method.equals("findUserConsumePage")) when(service.findUserConsumePage(8L, 1, 10)).thenReturn(page);
+        else when(service.findUserRechargePage(8L, 1, 10)).thenReturn(page);
+        AuthContextHolder.setUserId(8L);
+        try {
+            mvc(service, TEST_CREDENTIAL).perform(get("/api/account/userAccount/" + method + "/1/10").param("userId", "9999"))
+                    .andExpect(jsonPath("$.code").value(ResultCodeEnum.SUCCESS.getCode()))
+                    .andExpect(jsonPath("$.data.current").value(1))
+                    .andExpect(jsonPath("$.data.total").value(0));
+            if (method.equals("findUserConsumePage")) verify(service).findUserConsumePage(8L, 1, 10);
+            else verify(service).findUserRechargePage(8L, 1, 10);
+            verifyNoMoreInteractions(service);
+        } finally {
+            AuthContextHolder.removeUserId();
+        }
     }
 
     @Test

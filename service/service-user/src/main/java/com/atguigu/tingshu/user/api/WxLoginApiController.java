@@ -3,6 +3,7 @@ package com.atguigu.tingshu.user.api;
 import cn.binarywang.wx.miniapp.api.WxMaService;
 import cn.binarywang.wx.miniapp.bean.WxMaJscode2SessionResult;
 import com.atguigu.tingshu.common.login.LoginVerification;
+import com.atguigu.tingshu.common.util.MD5;
 import com.atguigu.tingshu.common.rabbit.constant.MqConst;
 import com.atguigu.tingshu.common.rabbit.service.RabbitService;
 import com.atguigu.tingshu.common.result.Result;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -116,6 +118,70 @@ public class WxLoginApiController {
         redisTemplate.opsForValue().set(token, userInfo, 30, TimeUnit.MINUTES);
         HashMap<String, Object> map = new HashMap<>();
         map.put("token",token);
+        return Result.ok(map);
+    }
+
+    /**
+     * H5 手机号+密码登录（多端登录体系：小程序微信登录 / H5 密码登录，共用 token 体系与 user 表）。
+     * 密码使用 MD5 摘要存储（项目既有约定；生产环境建议 BCrypt，已记录到面试话术）。
+     */
+    @Operation(summary = "H5 手机号密码登录")
+    @PostMapping("/phoneLogin")
+    public Result phoneLogin(@RequestBody Map<String, String> params) {
+        String phone = params.get("phone");
+        String password = params.get("password");
+        if (phone == null || phone.isBlank() || password == null || password.isBlank()) {
+            return Result.fail().message("手机号和密码不能为空");
+        }
+        UserInfo userInfo = userInfoService.getOne(new LambdaQueryWrapper<UserInfo>().eq(UserInfo::getPhone, phone));
+        if (userInfo == null) {
+            return Result.fail().message("账号不存在，请先注册");
+        }
+        if (!MD5.encrypt(password).equals(userInfo.getPassword())) {
+            return Result.fail().message("密码错误");
+        }
+        String token = UUID.randomUUID().toString().replaceAll("-","");
+        redisTemplate.opsForValue().set(token, userInfo, 30, TimeUnit.MINUTES);
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("token", token);
+        return Result.ok(map);
+    }
+
+    /**
+     * H5 注册：手机号+密码+昵称。与微信注册同链路（saveUserAndInitAccount 含 Feign 账户初始化），
+     * 注册成功直接签发 token（省一次登录请求）。
+     */
+    @Operation(summary = "H5 注册")
+    @PostMapping("/register")
+    public Result register(@RequestBody Map<String, String> params) {
+        String phone = params.get("phone");
+        String password = params.get("password");
+        String nickname = params.get("nickname");
+        if (phone == null || !phone.matches("^1[3-9]\\d{9}$")) {
+            return Result.fail().message("手机号格式不正确");
+        }
+        if (password == null || password.length() < 6) {
+            return Result.fail().message("密码至少 6 位");
+        }
+        UserInfo exists = userInfoService.getOne(new LambdaQueryWrapper<UserInfo>().eq(UserInfo::getPhone, phone));
+        if (exists != null) {
+            return Result.fail().message("该手机号已注册");
+        }
+        UserInfo userInfo = new UserInfo();
+        userInfo.setPhone(phone);
+        userInfo.setPassword(MD5.encrypt(password));
+        // wx_open_id 为 NOT NULL + 唯一索引且默认空串，H5 账户没有微信身份。
+        // 用保留前缀写入稳定占位值，避免第二个 H5 账户撞空串唯一键；
+        // 微信登录只按真实 openid 查询，不会命中此前缀。
+        userInfo.setWxOpenId("h5_" + phone);
+        userInfo.setNickname(nickname == null || nickname.isBlank() ? "听友" + System.currentTimeMillis() : nickname);
+        userInfo.setAvatarUrl("https://oss.aliyuncs.com/aliyun_id_photo_bucket/default_handsome.jpg");
+        userInfoService.saveUserAndInitAccount(userInfo);
+
+        String token = UUID.randomUUID().toString().replaceAll("-","");
+        redisTemplate.opsForValue().set(token, userInfo, 30, TimeUnit.MINUTES);
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("token", token);
         return Result.ok(map);
     }
     /**

@@ -1,5 +1,6 @@
 package com.atguigu.tingshu.account.service.impl;
 
+import com.atguigu.tingshu.account.mapper.RechargeInfoMapper;
 import com.atguigu.tingshu.account.mapper.UserAccountDetailMapper;
 import com.atguigu.tingshu.account.mapper.UserAccountMapper;
 import com.atguigu.tingshu.account.service.UserAccountService;
@@ -7,10 +8,13 @@ import com.atguigu.tingshu.common.constant.SystemConstant;
 import com.atguigu.tingshu.common.execption.GuiguException;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.result.ResultCodeEnum;
+import com.atguigu.tingshu.model.account.RechargeInfo;
 import com.atguigu.tingshu.model.account.UserAccount;
 import com.atguigu.tingshu.model.account.UserAccountDetail;
 import com.atguigu.tingshu.vo.account.AccountLockVo;
+import com.atguigu.tingshu.vo.account.AccountRecordVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -29,6 +34,8 @@ public class UserAccountServiceImpl extends ServiceImpl<UserAccountMapper, UserA
 	private UserAccountMapper userAccountMapper;
 	@Autowired
 	private UserAccountDetailMapper userAccountDetailMapper;
+    @Autowired
+    private RechargeInfoMapper rechargeInfoMapper;
     /** 同一用户的扣款先锁账户，再检查消费流水，防止并发重试重复扣款。 */
     @Transactional(rollbackFor = Exception.class)
     @Override
@@ -76,6 +83,59 @@ public class UserAccountServiceImpl extends ServiceImpl<UserAccountMapper, UserA
             throw new GuiguException(ResultCodeEnum.SERVICE_ERROR);
         }
         return Result.ok();
+    }
+
+    @Override
+    public Page<AccountRecordVo> findUserConsumePage(Long userId, long page, long limit) {
+        validateRecordPage(userId, page, limit);
+        Page<UserAccountDetail> source = userAccountDetailMapper.selectPage(new Page<>(page, limit),
+                new LambdaQueryWrapper<UserAccountDetail>()
+                        .eq(UserAccountDetail::getUserId, userId)
+                        .eq(UserAccountDetail::getTradeType, SystemConstant.ACCOUNT_TRADE_TYPE_MINUS)
+                        .orderByDesc(UserAccountDetail::getCreateTime)
+                        .orderByDesc(UserAccountDetail::getId));
+        Page<AccountRecordVo> result = new Page<>(source.getCurrent(), source.getSize(), source.getTotal());
+        result.setRecords(source.getRecords().stream().map(detail -> {
+            AccountRecordVo record = new AccountRecordVo();
+            record.setId(detail.getId());
+            record.setTitle(detail.getTitle());
+            record.setCreateTime(detail.getCreateTime());
+            record.setAmount(detail.getAmount());
+            return record;
+        }).collect(Collectors.toList()));
+        return result;
+    }
+
+    @Override
+    public Page<AccountRecordVo> findUserRechargePage(Long userId, long page, long limit) {
+        validateRecordPage(userId, page, limit);
+        // 现有充值链路不写 1201 流水，只读取当前用户已支付充值单，不能把未支付单当作充值。
+        Page<RechargeInfo> source = rechargeInfoMapper.selectPage(new Page<>(page, limit),
+                new LambdaQueryWrapper<RechargeInfo>()
+                        .eq(RechargeInfo::getUserId, userId)
+                        .eq(RechargeInfo::getRechargeStatus, SystemConstant.ORDER_STATUS_PAID)
+                        .orderByDesc(RechargeInfo::getCreateTime)
+                        .orderByDesc(RechargeInfo::getId));
+        Page<AccountRecordVo> result = new Page<>(source.getCurrent(), source.getSize(), source.getTotal());
+        result.setRecords(source.getRecords().stream().map(recharge -> {
+            AccountRecordVo record = new AccountRecordVo();
+            record.setId(recharge.getId());
+            record.setTitle(SystemConstant.ORDER_PAY_WAY_WEIXIN.equals(recharge.getPayWay()) ? "微信充值"
+                    : SystemConstant.ORDER_PAY_WAY_ALIPAY.equals(recharge.getPayWay()) ? "支付宝充值" : "账户充值");
+            record.setCreateTime(recharge.getCreateTime());
+            record.setAmount(recharge.getRechargeAmount());
+            return record;
+        }).collect(Collectors.toList()));
+        return result;
+    }
+
+    private void validateRecordPage(Long userId, long page, long limit) {
+        if (userId == null || userId <= 0) {
+            throw new GuiguException(ResultCodeEnum.LOGIN_AUTH);
+        }
+        if (page < 1 || limit < 1 || limit > 100 || page > Long.MAX_VALUE / limit) {
+            throw new GuiguException(ResultCodeEnum.ARGUMENT_VALID_ERROR);
+        }
     }
 
 	@Override
