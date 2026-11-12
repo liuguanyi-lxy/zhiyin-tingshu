@@ -1,0 +1,5 @@
+// 全局配置：与小程序 config/confjg.js 对齐
+// BASE_URL 指向虚拟机 Nginx（80），由 Nginx 反代到 Docker 网关 8500
+export const BASE_URL = 'http://192.168.13.100'
+export const BASE_UPLOAD_URL = 'http://192.168.13.100'
+export const WebSocket_BASE_URL = 'ws://192.168.13.100/api/websocket'

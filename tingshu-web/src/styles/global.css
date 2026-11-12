@@ -1,0 +1,47 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f7f8fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,
+    Segoe UI, Arial, Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft Yahei',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.08);
+}
+
+/* 固定导航与内容同宽，避免桌面窗口上控件横跨整个浏览器。 */
+.van-nav-bar--fixed,
+.van-tabbar--fixed,
+.van-submit-bar,
+.van-action-bar {
+  max-width: 480px;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* 与小程序视觉对齐的通用卡片 */
+.tingshu-card {
+  margin: 10px 12px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 8px;
+}
