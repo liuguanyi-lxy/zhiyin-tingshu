@@ -13,11 +13,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -152,5 +156,15 @@ class RechargeInfoServiceImplTest {
 
         // 验证执行充值成功处理时抛出异常
         assertThrows(Exception.class, () -> service.rechargePaySuccess("RECHARGE123"));
+    }
+
+    /** 状态更新与加款必须处在同一本地事务，否则账户缺失/进程崩溃会留下“已支付未到账”。 */
+    @Test
+    void rechargePaySuccess_rollsBackStatusOnAnyFailure() throws Exception {
+        Method method = RechargeInfoServiceImpl.class.getMethod("rechargePaySuccess", String.class);
+        Transactional transactional = method.getAnnotation(Transactional.class);
+        assertTrue(transactional != null, "rechargePaySuccess 必须声明事务");
+        assertTrue(List.of(transactional.rollbackFor()).contains(Exception.class),
+                "入账异常必须回滚已支付状态");
     }
 }

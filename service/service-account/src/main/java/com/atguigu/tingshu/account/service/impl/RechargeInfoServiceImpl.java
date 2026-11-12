@@ -13,6 +13,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
@@ -27,7 +28,11 @@ public class RechargeInfoServiceImpl extends ServiceImpl<RechargeInfoMapper, Rec
 	private UserAccountMapper userAccountMapper;
 	//根据充值记录编号修改充值记录
 	@Override
+	@Transactional(rollbackFor = Exception.class)
 	public void rechargePaySuccess(String orderNo) {
+		// 充值单状态与账户余额同属 tingshu_account 库：
+		// 条件更新（0901→0902）与原子加款必须同一本地事务，避免“已支付但未到账”的中间态。
+		// 重复消息仍由条件更新挡住；事务提交前崩溃则状态回滚，消息重投后可再次处理。
 		// 获取到充值信息对象
 		RechargeInfo rechargeInfo = this.getRechargeInfo(orderNo);
 		Assert.notNull(rechargeInfo, "充值记录不存在");
