@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.error.WxErrorException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,6 +44,10 @@ public class WxLoginApiController {
 
     @Autowired
     private RabbitService rabbitService;
+
+    /** H5 开发登录开关：默认关闭，本地/内网开发环境通过配置或环境变量开启 */
+    @Value("${tingshu.h5.dev-login:false}")
+    private boolean h5DevLoginEnabled;
 
     //code是前端请求微信接口服务器后的到的，然后传递给后端服务，后端服务再根据微信公众平台id + 秘钥请求微信服务器接口，返回openid
     @GetMapping("/wxLogin/{code}")
@@ -85,6 +90,32 @@ public class WxLoginApiController {
         HashMap<String, Object> map = new HashMap<>();
         map.put("token",token);
         //  返回数据
+        return Result.ok(map);
+    }
+
+    /**
+     * H5 网页端开发登录：网页没有 wx.login，无法换取 code 走微信登录。
+     * 按 userId 直接签发与 wxLogin 同构的 token（Redis 存储、30 分钟过期），
+     * 供 H5 前端（tingshu-web）联调使用。
+     *
+     * <p>安全门禁：受 tingshu.h5.dev-login 属性控制，默认关闭；仅在本地/内网
+     * 开发环境开启（容器部署通过环境变量注入），生产环境与公网部署必须保持关闭。</p>
+     */
+    @Operation(summary = "H5开发登录（属性开关门禁，默认关闭）")
+    @GetMapping("/devLogin/{userId}")
+    public Result devLogin(@PathVariable("userId") Long userId) {
+        if (!h5DevLoginEnabled) {
+            return Result.fail().message("H5 dev login is disabled");
+        }
+        UserInfo userInfo = userInfoService.getById(userId);
+        if (userInfo == null) {
+            return Result.fail().message("用户不存在");
+        }
+        // 与 wxLogin 相同的 token 签发方式：UUID 作为 key，用户信息作为 value，30 分钟过期
+        String token = UUID.randomUUID().toString().replaceAll("-","");
+        redisTemplate.opsForValue().set(token, userInfo, 30, TimeUnit.MINUTES);
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("token",token);
         return Result.ok(map);
     }
     /**

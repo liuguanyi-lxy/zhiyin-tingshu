@@ -44,6 +44,8 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final List<String> WHITE_LIST = Arrays.asList(
             // 登录接口本身
             "/api/user/wxLogin/wxLogin/**",
+            // H5 网页端开发登录（后端有 tingshu.h5.dev-login 属性门禁，默认关闭）
+            "/api/user/wxLogin/devLogin/**",
             // 微信支付回调（微信服务器无 token，安全性由支付验签保证，见 WxPayApiController#notify）
             "/api/payment/wxPay/notify",
             // WebSocket 握手（浏览器无法携带自定义 header）
