@@ -1,0 +1,31 @@
+知音听书 - 一键启动脚本（项目内）
+================================================
+
+目录：<仓库根>\一键启动\
+
+一、两套入口
+1) 启动-小程序端.bat
+   后端：虚拟机 192.168.13.100 的 Docker Compose 容器集群
+   前端：微信开发者工具打开 mp-weixin
+   关闭：停止-小程序端.bat
+
+2) 启动-H5端.bat
+   后端：同上（共用）
+   前端：tingshu-web（Vite，http://localhost:5173）
+   关闭：停止-H5端.bat
+
+停止脚本默认只关闭自己的前端；“是否同时停止后端容器”输入 y 才会 docker compose down，
+避免关闭 H5 时把小程序端正在用的后端一起停掉。
+
+二、前置条件
+- VMware 虚拟机 linux_xuniji（192.168.13.100）能通过 SSH 免密登录
+- 虚拟机内 Docker 与 /opt/tingshu-compose/docker-compose.yml 存在
+- 本机已安装 Node.js（H5 端需要）
+- tingshu-web\node_modules 已安装；若缺失，脚本会提示执行：
+  npm install --registry=https://registry.npmmirror.com
+- 微信开发者工具安装在 D:\微信web开发者工具\
+
+三、说明
+- run-h5-dev.bat 是 H5 开发服务窗口，关闭该窗口即停止 Vite。
+- 后端接口统一走 http://192.168.13.100（虚拟机 Nginx -> 网关 8500）。
+- 本目录脚本含本机路径（VMware、微信工具），换机器需要改文件头部变量。

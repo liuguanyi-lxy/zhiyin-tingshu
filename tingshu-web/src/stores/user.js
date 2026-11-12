@@ -101,6 +101,10 @@ export const useUserStore = defineStore('user', () => {
     return authenticate(() => userApi.phoneLogin(credentials))
   }
 
+  function smsLogin(credentials) {
+    return authenticate(() => userApi.smsLogin(credentials))
+  }
+
   async function register(credentials) {
     let accountCreated = false
     try {
@@ -124,5 +128,5 @@ export const useUserStore = defineStore('user', () => {
     return authenticate(() => userApi.devLogin(userId))
   }
 
-  return { token, user, amount, isLogin, setToken, setUserInfo, clear, devLogin, phoneLogin, register, getUserInfo }
+  return { token, user, amount, isLogin, setToken, setUserInfo, clear, devLogin, phoneLogin, smsLogin, register, getUserInfo }
 })

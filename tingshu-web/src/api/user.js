@@ -6,9 +6,25 @@ class UserApi extends Service {
   phoneLogin({ phone, password }) {
     return this.post({ url: '/api/user/wxLogin/phoneLogin', data: { phone, password }, loading: false, silent: true })
   }
-  /** 注册成功直接返回 data.token，无需再调用登录。 */
-  register({ phone, password, nickname }) {
-    return this.post({ url: '/api/user/wxLogin/register', data: { phone, password, nickname }, loading: false, silent: true })
+  /** 注册成功直接返回 data.token，无需再调用登录。短信开启时需带 smsCode。 */
+  register({ phone, password, nickname, smsCode }) {
+    return this.post({
+      url: '/api/user/wxLogin/register',
+      data: { phone, password, nickname, ...(smsCode ? { smsCode } : {}) },
+      loading: false, silent: true
+    })
+  }
+  /** 发送短信验证码；scene=register/login。 */
+  sendSmsCode(phone, scene) {
+    return this.post({ url: '/api/user/wxLogin/sendSmsCode', data: { phone, scene }, loading: false, silent: true })
+  }
+  /** 短信验证码登录；验证码一次性消费。 */
+  smsLogin({ phone, smsCode }) {
+    return this.post({ url: '/api/user/wxLogin/smsLogin', data: { phone, smsCode }, loading: false, silent: true })
+  }
+  /** 短信能力探测：未配置阿里云短信时返回 enabled=false。 */
+  getSmsEnabled() {
+    return this.get({ url: '/api/user/wxLogin/smsEnabled', loading: false, silent: true })
   }
   /** 与小程序一致：multipart 的 file 字段，成功时 data 是图片 URL 字符串。 */
   uploadAvatar(file) {

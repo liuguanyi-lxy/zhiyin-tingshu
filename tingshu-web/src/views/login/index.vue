@@ -11,7 +11,13 @@
     </header>
 
     <section class="login-panel" aria-labelledby="login-heading">
-      <h2 id="login-heading">{{ registering ? '注册账号' : '手机号登录' }}</h2>
+      <h2 id="login-heading">{{ registering ? '注册账号' : (smsMode ? '验证码登录' : '手机号登录') }}</h2>
+
+      <div v-if="smsEnabled && !registering" class="login-tabs" role="tablist" aria-label="登录方式">
+        <button type="button" role="tab" :aria-selected="!smsMode" :class="{ active: !smsMode }" @click="switchLoginMode('password')">密码登录</button>
+        <button type="button" role="tab" :aria-selected="smsMode" :class="{ active: smsMode }" @click="switchLoginMode('sms')">验证码登录</button>
+      </div>
+
       <form novalidate @submit.prevent="submit">
         <fieldset :disabled="loading">
           <legend class="sr-only">{{ registering ? '注册信息' : '登录信息' }}</legend>
@@ -35,7 +41,7 @@
             <p v-if="errors.phone" id="phone-error" class="field-error">{{ errors.phone }}</p>
           </div>
 
-          <div class="form-field">
+          <div v-if="!smsMode" class="form-field">
             <label for="login-password">密码</label>
             <div class="password-input">
               <input
@@ -56,6 +62,30 @@
               </button>
             </div>
             <p v-if="errors.password" id="password-error" class="field-error">{{ errors.password }}</p>
+          </div>
+
+          <div v-if="needsSmsCode" class="form-field">
+            <label for="login-sms-code">短信验证码</label>
+            <div class="sms-code-row">
+              <input
+                id="login-sms-code"
+                ref="smsCodeInput"
+                v-model="form.smsCode"
+                name="smsCode"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                placeholder="请输入 6 位验证码"
+                :aria-invalid="!!errors.smsCode"
+                :aria-describedby="errors.smsCode ? 'sms-code-error' : undefined"
+                @input="errors.smsCode = ''; serverError = ''"
+              />
+              <button type="button" class="sms-send" :disabled="sendingSms || countdown > 0 || loading" @click="sendSmsCode">
+                {{ countdown > 0 ? `${countdown}s 后重发` : sendingSms ? '发送中…' : '获取验证码' }}
+              </button>
+            </div>
+            <p v-if="errors.smsCode" id="sms-code-error" class="field-error">{{ errors.smsCode }}</p>
           </div>
 
           <template v-if="registering">
@@ -120,10 +150,11 @@
 </template>
 
 <script setup>
-import { reactive, ref, nextTick, onBeforeUnmount } from 'vue'
+import { reactive, ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { showDialog } from 'vant'
+import { showDialog, showToast } from 'vant'
 import { useUserStore } from '../../stores/user.js'
+import { userApi } from '../../api/user.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -132,12 +163,29 @@ const registering = ref(false)
 const loading = ref(false)
 const showPassword = ref(false)
 const serverError = ref('')
-const form = reactive({ phone: '', password: '', confirmPassword: '', nickname: '' })
-const errors = reactive({ phone: '', password: '', confirmPassword: '', nickname: '' })
+const smsEnabled = ref(false)
+const loginMode = ref('password')
+const sendingSms = ref(false)
+const countdown = ref(0)
+const form = reactive({ phone: '', password: '', confirmPassword: '', nickname: '', smsCode: '' })
+const errors = reactive({ phone: '', password: '', confirmPassword: '', nickname: '', smsCode: '' })
 const phoneInput = ref(null)
 const passwordInput = ref(null)
 const confirmInput = ref(null)
 const nicknameInput = ref(null)
+const smsCodeInput = ref(null)
+let countdownTimer = null
+const smsMode = computed(() => !registering.value && loginMode.value === 'sms')
+const needsSmsCode = computed(() => smsEnabled.value && (registering.value || smsMode.value))
+
+onMounted(async () => {
+  try {
+    const res = await userApi.getSmsEnabled()
+    smsEnabled.value = res?.data?.enabled === true
+  } catch {
+    smsEnabled.value = false
+  }
+})
 
 function safeRedirect(value) {
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return '/index'
@@ -156,22 +204,76 @@ function switchMode() {
   registering.value = !registering.value
   form.password = ''
   form.confirmPassword = ''
+  form.smsCode = ''
   showPassword.value = false
   serverError.value = ''
   Object.keys(errors).forEach((key) => { errors[key] = '' })
   nextTick(() => phoneInput.value?.focus())
 }
 
+function switchLoginMode(mode) {
+  if (loading.value || mode === loginMode.value) return
+  loginMode.value = mode
+  form.smsCode = ''
+  form.password = ''
+  serverError.value = ''
+  Object.keys(errors).forEach((key) => { errors[key] = '' })
+  nextTick(() => (mode === 'sms' ? smsCodeInput.value : passwordInput.value)?.focus())
+}
+
+function startCountdown() {
+  countdown.value = 60
+  clearInterval(countdownTimer)
+  countdownTimer = setInterval(() => {
+    countdown.value -= 1
+    if (countdown.value <= 0) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+      countdown.value = 0
+    }
+  }, 1000)
+}
+
+async function sendSmsCode() {
+  if (sendingSms.value || countdown.value > 0 || loading.value) return
+  serverError.value = ''
+  const phone = form.phone.trim()
+  if (!/^1[3-9]\d{9}$/.test(phone)) {
+    errors.phone = '请输入正确的 11 位手机号'
+    await nextTick()
+    phoneInput.value?.focus()
+    return
+  }
+  sendingSms.value = true
+  try {
+    const scene = registering.value ? 'register' : 'login'
+    const res = await userApi.sendSmsCode(phone, scene)
+    if (res?.code !== 200) throw new Error(res?.message || '验证码发送失败')
+    startCountdown()
+    showToast('验证码已发送')
+    await nextTick()
+    smsCodeInput.value?.focus()
+  } catch (error) {
+    serverError.value = error?.response?.data?.message || error?.message || '验证码发送失败，请稍后重试'
+  } finally {
+    sendingSms.value = false
+  }
+}
+
 async function submit() {
   if (loading.value) return
   serverError.value = ''
   errors.phone = /^1[3-9]\d{9}$/.test(form.phone.trim()) ? '' : '请输入正确的 11 位手机号'
-  errors.password = !form.password.trim() ? '请输入密码' : registering.value && form.password.length < 6 ? '密码至少 6 位' : ''
+  errors.password = smsMode.value
+    ? ''
+    : !form.password.trim() ? '请输入密码' : registering.value && form.password.length < 6 ? '密码至少 6 位' : ''
   errors.confirmPassword = registering.value && form.password !== form.confirmPassword ? '两次输入的密码不一致' : ''
   errors.nickname = !registering.value ? '' : !form.nickname.trim() ? '请输入昵称' : form.nickname.trim().length > 32 ? '昵称不能超过 32 个字符' : ''
+  errors.smsCode = needsSmsCode.value && !/^\d{6}$/.test(form.smsCode.trim()) ? '请输入 6 位短信验证码' : ''
   const invalid = [
     [errors.phone, phoneInput], [errors.password, passwordInput],
-    [errors.confirmPassword, confirmInput], [errors.nickname, nicknameInput]
+    [errors.confirmPassword, confirmInput], [errors.nickname, nicknameInput],
+    [errors.smsCode, smsCodeInput]
   ].find(([message]) => message)
   if (invalid) {
     await nextTick()
@@ -181,11 +283,24 @@ async function submit() {
 
   loading.value = true
   try {
-    const credentials = { phone: form.phone.trim(), password: form.password }
-    if (registering.value) await userStore.register({ ...credentials, nickname: form.nickname.trim() })
-    else await userStore.phoneLogin(credentials)
+    const phone = form.phone.trim()
+    if (smsMode.value) {
+      await userStore.smsLogin({ phone, smsCode: form.smsCode.trim() })
+    } else {
+      const credentials = { phone, password: form.password }
+      if (registering.value) {
+        await userStore.register({
+          ...credentials,
+          nickname: form.nickname.trim(),
+          ...(smsEnabled.value ? { smsCode: form.smsCode.trim() } : {})
+        })
+      } else {
+        await userStore.phoneLogin(credentials)
+      }
+    }
     form.password = ''
     form.confirmPassword = ''
+    form.smsCode = ''
     await router.replace(safeRedirect(route.query.redirect))
   } catch (error) {
     serverError.value = error?.response?.data?.message || (error?.isAxiosError ? '网络异常，请检查连接后重试' : error?.message) || '登录失败，请稍后重试'
@@ -199,8 +314,11 @@ function explainWechat() {
 }
 
 onBeforeUnmount(() => {
+  clearInterval(countdownTimer)
+  countdownTimer = null
   form.password = ''
   form.confirmPassword = ''
+  form.smsCode = ''
 })
 </script>
 
@@ -237,6 +355,14 @@ fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
 .submit-button { margin-top: 28px; min-height: 46px; font-size: 16px; }
 .switch-mode { display: flex; justify-content: center; align-items: center; margin: 12px 0 0; color: #969799; font-size: 13px; }
 .switch-mode button { min-height: 44px; padding: 0 5px; border: 0; background: none; color: #079b4e; font: inherit; cursor: pointer; }
+.login-tabs { display: flex; gap: 28px; margin: -6px 0 24px; border-bottom: 1px solid #f2f3f5; }
+.login-tabs button { position: relative; min-height: 42px; padding: 0 2px 12px; border: 0; background: none; color: #969799; font: inherit; font-size: 15px; cursor: pointer; }
+.login-tabs button.active { color: #323233; font-weight: 600; }
+.login-tabs button.active::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 2px; background: var(--account-green); }
+.sms-code-row { display: flex; align-items: center; gap: 10px; }
+.sms-code-row input { flex: 1; min-width: 0; }
+.sms-send { flex-shrink: 0; min-height: 34px; padding: 0 12px; border: 1px solid #07c160; border-radius: 17px; background: #fff; color: #079b4e; font: inherit; font-size: 12px; cursor: pointer; }
+.sms-send:disabled { border-color: #d8d8d8; color: #b1b3b8; cursor: not-allowed; }
 .wechat-info { text-align: center; margin-top: 30px; }
 .other-label { display: flex; gap: 16px; align-items: center; color: #969799; font-size: 12px; }
 .other-label::before, .other-label::after { content: ''; flex: 1; height: 1px; background: #ebedf0; }

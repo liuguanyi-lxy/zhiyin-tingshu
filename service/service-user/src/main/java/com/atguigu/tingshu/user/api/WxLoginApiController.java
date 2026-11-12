@@ -10,6 +10,7 @@ import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.common.util.AuthContextHolder;
 import com.atguigu.tingshu.model.user.UserInfo;
 import com.atguigu.tingshu.user.service.UserInfoService;
+import com.atguigu.tingshu.user.sms.SmsCodeService;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,6 +47,9 @@ public class WxLoginApiController {
 
     @Autowired
     private RabbitService rabbitService;
+
+    @Autowired
+    private SmsCodeService smsCodeService;
 
     /** H5 开发登录开关：默认关闭，本地/内网开发环境通过配置或环境变量开启 */
     @Value("${tingshu.h5.dev-login:false}")
@@ -122,6 +126,58 @@ public class WxLoginApiController {
     }
 
     /**
+     * 短信能力探测：前端据此决定是否展示“验证码登录/注册验证码”。
+     * 只返回开关状态，不暴露任何短信凭证。
+     */
+    @GetMapping("/smsEnabled")
+    public Result smsEnabled() {
+        return Result.ok(Map.of("enabled", smsCodeService.isEnabled()));
+    }
+
+    /**
+     * 发送短信验证码。scene=register（注册校验）或 login（验证码登录）。
+     * 未配置阿里云短信时明确失败，不返回假的“已发送”。
+     */
+    @Operation(summary = "发送短信验证码")
+    @PostMapping("/sendSmsCode")
+    public Result sendSmsCode(@RequestBody Map<String, String> params) {
+        try {
+            smsCodeService.sendCode(params.get("phone"), params.get("scene"));
+            return Result.ok();
+        } catch (IllegalStateException e) {
+            return Result.fail().message(e.getMessage());
+        }
+    }
+
+    /**
+     * 手机号 + 短信验证码登录（与密码登录共用 token 体系）。
+     * 验证码一次性消费；账号不存在时在验码通过后才提示，减少无效枚举。
+     */
+    @Operation(summary = "H5 短信验证码登录")
+    @PostMapping("/smsLogin")
+    public Result smsLogin(@RequestBody Map<String, String> params) {
+        String phone = params.get("phone");
+        String smsCode = params.get("smsCode");
+        if (!smsCodeService.isEnabled()) {
+            return Result.fail().message("短信验证码登录暂未启用，请使用密码登录");
+        }
+        try {
+            smsCodeService.verify(phone, SmsCodeService.SCENE_LOGIN, smsCode);
+        } catch (IllegalStateException e) {
+            return Result.fail().message(e.getMessage());
+        }
+        UserInfo userInfo = userInfoService.getOne(new LambdaQueryWrapper<UserInfo>().eq(UserInfo::getPhone, phone));
+        if (userInfo == null) {
+            return Result.fail().message("账号不存在，请先注册");
+        }
+        String token = UUID.randomUUID().toString().replaceAll("-","");
+        redisTemplate.opsForValue().set(token, userInfo, 30, TimeUnit.MINUTES);
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("token", token);
+        return Result.ok(map);
+    }
+
+    /**
      * H5 手机号+密码登录（多端登录体系：小程序微信登录 / H5 密码登录，共用 token 体系与 user 表）。
      * 密码使用 MD5 摘要存储（项目既有约定；生产环境建议 BCrypt，已记录到面试话术）。
      */
@@ -166,6 +222,14 @@ public class WxLoginApiController {
         UserInfo exists = userInfoService.getOne(new LambdaQueryWrapper<UserInfo>().eq(UserInfo::getPhone, phone));
         if (exists != null) {
             return Result.fail().message("该手机号已注册");
+        }
+        // 短信开启时，注册必须校验手机号归属；未开启则保持原有注册流程。
+        if (smsCodeService.isEnabled()) {
+            try {
+                smsCodeService.verify(phone, SmsCodeService.SCENE_REGISTER, params.get("smsCode"));
+            } catch (IllegalStateException e) {
+                return Result.fail().message(e.getMessage());
+            }
         }
         UserInfo userInfo = new UserInfo();
         userInfo.setPhone(phone);
