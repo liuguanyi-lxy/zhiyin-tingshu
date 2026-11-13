@@ -330,14 +330,14 @@ function markBroken(id) {
 }
 
 .leaf-chip {
-  height: 28px;
-  padding: 0 var(--sp-3);
+  height: 32px;
+  padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--ground);
   color: var(--ink-2);
-  font-size: var(--fs-meta);
-  line-height: 26px;
+  font-size: var(--fs-body);
+  line-height: 30px;
   transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
 
@@ -464,6 +464,32 @@ function markBroken(id) {
     top: 60px;
     padding: var(--sp-3) var(--sp-5);
     justify-content: flex-start;
+  }
+
+  /* 桌面版心 1200px，分类胶囊需放大才能撑起横向空间 */
+  .level1-chip {
+    height: 38px;
+    line-height: 36px;
+    padding: 0 20px;
+    font-size: 15px;
+  }
+
+  .sub-card {
+    padding: var(--sp-4);
+  }
+
+  .sub-name {
+    font-size: 15px;
+  }
+
+  .sub-name::before {
+    height: 15px;
+  }
+
+  .leaf-chip {
+    height: 36px;
+    padding: 0 18px;
+    line-height: 34px;
   }
 
   .sub-grid {

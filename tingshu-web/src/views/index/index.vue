@@ -27,10 +27,24 @@
     <div class="page home-body">
       <!-- 精选推荐 -->
       <section class="carousel" aria-label="精选推荐">
-        <van-swipe :autoplay="reduceMotion ? 0 : 5000" indicator-color="#fff" :show-indicators="true">
+        <van-swipe ref="swipeRef" :autoplay="reduceMotion ? 0 : 5000" :show-indicators="false">
           <van-swipe-item v-for="(banner, index) in banners" :key="banner">
             <img :src="banner" :alt="`知音听书精选推荐 ${index + 1}`" :loading="index ? 'lazy' : 'eager'" />
           </van-swipe-item>
+          <!-- Vant 默认指示器不支持点击切换，改自定义圆点 + swipeTo -->
+          <template #indicator="{ active, total }">
+            <div class="swipe-dots">
+              <button
+                v-for="(_, index) in total"
+                :key="index"
+                type="button"
+                class="swipe-dot"
+                :class="{ active: index === active }"
+                :aria-label="`查看第 ${index + 1} 张轮播图`"
+                @click="goBanner(index)"
+              ></button>
+            </div>
+          </template>
         </van-swipe>
       </section>
 
@@ -109,6 +123,9 @@ import bannerC from '../../assets/carousel/c.png'
 
 const router = useRouter()
 const banners = [bannerA, bannerB, bannerC]
+const swipeRef = ref(null)
+/** 指示器点击切换到指定轮播图（Vant 默认指示器只展示、不可点） */
+function goBanner(index) { swipeRef.value?.swipeTo(index) }
 const payLabels = { '0101': '免费', '0102': 'VIP免费', '0103': '付费' }
 const payClass = { '0101': 'tag-free', '0102': 'tag-vip', '0103': 'tag-paid' }
 const categories = ref([])
@@ -324,8 +341,42 @@ function formatCount(value) {
   display: block;
 }
 
-.carousel :deep(.van-swipe__indicators) {
-  bottom: 8px;
+/* 自定义指示器：slot 分支不生成 Vant 的定位容器，圆点容器自行悬浮底部 */
+.carousel .swipe-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 1;
+}
+
+/* 默认半透明白点，激活实心放大；整块可点击 */
+.carousel .swipe-dot {
+  width: 7px;
+  height: 7px;
+  margin: 0 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.carousel .swipe-dot:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.carousel .swipe-dot.active {
+  background: #fff;
+  transform: scale(1.3);
+}
+
+.carousel .swipe-dot:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 /* 分类快捷入口 */
@@ -343,14 +394,14 @@ function formatCount(value) {
 .category-shortcuts button {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  height: 28px;
-  padding: 0 var(--sp-3);
+  gap: 3px;
+  height: 32px;
+  padding: 0 14px;
   border: 0;
   border-radius: var(--r-pill);
   background: var(--ground);
   color: var(--ink-2);
-  font-size: var(--fs-meta);
+  font-size: var(--fs-body);
   transition: background 0.15s ease, color 0.15s ease;
 }
 
@@ -518,6 +569,17 @@ function formatCount(value) {
   .category-shortcuts {
     margin-top: 0;
     margin-bottom: var(--sp-2);
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+  }
+
+  /* 桌面上整条横带是页面主导航之一：胶囊均分整行宽度，不留右侧空档 */
+  .category-shortcuts button {
+    flex: 1 1 0;
+    justify-content: center;
+    height: 40px;
+    padding: 0 20px;
+    font-size: 15px;
   }
 
   .album-grid {
