@@ -1,6 +1,7 @@
 package com.atguigu.tingshu.album.client;
 
 import com.atguigu.tingshu.album.client.impl.AlbumInfoDegradeFeignClient;
+import com.atguigu.tingshu.album.client.impl.AlbumInfoFeignClientFactory;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.model.album.AlbumAttributeValue;
 import com.atguigu.tingshu.model.album.AlbumInfo;
@@ -20,7 +21,8 @@ import java.util.List;
  *
  */
 //微服务被远程调用的客户端，指定微服务和降级处理类
-@FeignClient(value = "service-album", fallback = AlbumInfoDegradeFeignClient.class)
+//【联调修复】fallbackFactory 打印降级真实原因，替代静默的 fallback 类（降级返回值不变）
+@FeignClient(value = "service-album", fallbackFactory = AlbumInfoFeignClientFactory.class)
 public interface AlbumInfoFeignClient {
     //远程调用接口中的接口方法的路径要写全
     //根据专辑id获取专辑信息

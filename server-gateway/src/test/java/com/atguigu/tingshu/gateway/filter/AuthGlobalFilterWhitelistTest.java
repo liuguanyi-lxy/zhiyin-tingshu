@@ -90,4 +90,10 @@ class AuthGlobalFilterWhitelistTest {
         // 播放页匿名可看声音统计数据（评论/收藏/播放数来源）
         assertTrue(whitelisted("/api/album/trackInfo/getTrackStatVo/123"));
     }
+
+    @Test
+    void rechargeInfo_requiresLogin() {
+        // 安全审计 M3：充值单查询移出白名单，防匿名遍历
+        assertFalse(whitelisted("/api/account/rechargeInfo/getRechargeInfo/RECHARGE123"));
+    }
 }

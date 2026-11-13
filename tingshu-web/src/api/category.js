@@ -39,10 +39,6 @@ class CategoryApi extends Service {
   getCategory1IdData(id) {
     return this.get({ url: `/api/search/albumInfo/channel/${id}` })
   }
-  /** 二级分类树结构数据 */
-  getCategory2IdTreeList(id) {
-    return this.get({ url: `/api/search/albumInfo/channel2/${id}` })
-  }
 }
 
 export const categoryApi = new CategoryApi()

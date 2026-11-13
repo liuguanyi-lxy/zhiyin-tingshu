@@ -68,4 +68,36 @@ class ItemServiceImplTest {
 
         assertThrows(Exception.class, () -> service.getItem(1L));
     }
+
+    @Test
+    void getItem_missingAnnouncer_gracefulDegradation() {
+        when(albumInfoFeignClient.getAlbumInfo(1L)).thenReturn(Result.ok(albumInfo()));
+        when(categoryFeignClient.getCategoryView(100L)).thenReturn(Result.ok(new BaseCategoryView()));
+        when(userInfoFeignClient.getUserInfoVo(8L)).thenReturn(Result.ok(null));
+        when(albumInfoFeignClient.getAlbumInfoStat(1L)).thenReturn(Result.ok(new AlbumStatVo()));
+
+        Map<String, Object> result = service.getItem(1L);
+
+        assertNotNull(result.get("albumInfo"));
+        assertNotNull(result.get("baseCategoryView"));
+        assertNotNull(result.get("albumStatVo"));
+        org.junit.jupiter.api.Assertions.assertNull(result.get("announcer"));
+        assertEquals(3, result.size());
+    }
+
+    @Test
+    void getItem_missingStat_gracefulDegradation() {
+        when(albumInfoFeignClient.getAlbumInfo(1L)).thenReturn(Result.ok(albumInfo()));
+        when(categoryFeignClient.getCategoryView(100L)).thenReturn(Result.ok(new BaseCategoryView()));
+        when(userInfoFeignClient.getUserInfoVo(8L)).thenReturn(Result.ok(new UserInfoVo()));
+        when(albumInfoFeignClient.getAlbumInfoStat(1L)).thenReturn(Result.ok(null));
+
+        Map<String, Object> result = service.getItem(1L);
+
+        assertNotNull(result.get("albumInfo"));
+        assertNotNull(result.get("baseCategoryView"));
+        assertNotNull(result.get("announcer"));
+        assertNotNull(result.get("albumStatVo"));
+        assertEquals(4, result.size());
+    }
 }

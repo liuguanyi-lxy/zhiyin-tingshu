@@ -1,6 +1,7 @@
 package com.atguigu.tingshu.album.client;
 
 import com.atguigu.tingshu.album.client.impl.CategoryDegradeFeignClient;
+import com.atguigu.tingshu.album.client.impl.CategoryFeignClientFactory;
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.model.album.BaseCategory1;
 import com.atguigu.tingshu.model.album.BaseCategory3;
@@ -18,7 +19,7 @@ import java.util.List;
  *
  */
 //微服务被远程调用的客户端，指定微服务和降级处理类
-@FeignClient(value = "service-album", fallback = CategoryDegradeFeignClient.class)
+@FeignClient(value = "service-album", fallbackFactory = CategoryFeignClientFactory.class)
 public interface CategoryFeignClient {
     /**
      * 根据三级分类Id 在视图中获取到一、二、三分类数据

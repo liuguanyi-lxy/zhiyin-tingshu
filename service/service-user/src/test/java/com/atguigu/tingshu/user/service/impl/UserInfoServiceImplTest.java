@@ -348,6 +348,25 @@ class UserInfoServiceImplTest {
             assertEquals(SystemConstant.TRACK_NOT_BUY, map.get(1L));
             assertEquals(SystemConstant.TRACK_NOT_BUY, map.get(2L));
         }
+
+        @Test
+        void userIsPaidTrack_nullUserId_allNotBuyWithoutDbQuery() {
+            var map = service.userIsPaidTrack(null, 66L, Arrays.asList(1L, 2L));
+
+            assertEquals(SystemConstant.TRACK_NOT_BUY, map.get(1L));
+            assertEquals(SystemConstant.TRACK_NOT_BUY, map.get(2L));
+            org.mockito.Mockito.verify(userPaidAlbumMapper, org.mockito.Mockito.never()).selectOne(any());
+            org.mockito.Mockito.verify(userPaidTrackMapper, org.mockito.Mockito.never()).selectList(any());
+        }
+
+        @Test
+        void userIsPaidTrack_emptyTrackList_returnsEmptyMap() {
+            var map = service.userIsPaidTrack(9L, 66L, Collections.emptyList());
+
+            assertTrue(map.isEmpty());
+            org.mockito.Mockito.verify(userPaidAlbumMapper, org.mockito.Mockito.never()).selectOne(any());
+            org.mockito.Mockito.verify(userPaidTrackMapper, org.mockito.Mockito.never()).selectList(any());
+        }
     }
 
     /**【回归锁】CDC 对齐契约：UserCdcHandler 删除的 key 必须与 @RedisCache 生成格式一致 */

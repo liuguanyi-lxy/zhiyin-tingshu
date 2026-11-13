@@ -85,9 +85,9 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/user/userInfo/isSubscribe/**",
             "/api/user/userInfo/isCollect/**",
             // VIP 配置查询——【修复#4】由 /** 收紧为精确路径，避免将来新增管理端点被连带放行
-            "/api/user/vipServiceConfig/findAll",
-            // 充值单查询
-            "/api/account/rechargeInfo/getRechargeInfo/**"
+            "/api/user/vipServiceConfig/findAll"
+            //【安全审计 M3】充值单查询移出白名单：wallet/paySuccess 两个调用方登录后必带 token，
+            // 匿名放行只能靠后端 209 归属校验兜底，且响应存在性差异可被用于遍历充值单号
     );
     //【修复#4】以下路径从白名单移除，改为必须登录：
     // 1. /api/album/fileUpload —— 文件上传原为匿名放行，任何人可向 MinIO 任意传文件；
@@ -135,7 +135,8 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
                     if (Boolean.TRUE.equals(exists)) {
                         return chain.filter(exchange);
                     }
-                    log.warn("[网关鉴权] token不存在/已过期，拦截路径: {}, token: {}", path, token);
+                    //【安全审计 L1】token 只保留前 6 位掩码输出，避免日志泄露可用凭证
+            log.warn("[网关鉴权] token不存在/已过期，拦截路径: {}, token: {}***", path, token == null ? "" : token.substring(0, Math.min(6, token.length())));
                     return writeAuthError(exchange);
                 });
     }

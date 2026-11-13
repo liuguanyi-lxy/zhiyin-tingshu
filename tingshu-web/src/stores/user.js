@@ -123,10 +123,5 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  /** 保留开发接口供旧调用兼容，普通登录页不提供该入口。 */
-  function devLogin(userId) {
-    return authenticate(() => userApi.devLogin(userId))
-  }
-
-  return { token, user, amount, isLogin, setToken, setUserInfo, clear, devLogin, phoneLogin, smsLogin, register, getUserInfo }
+  return { token, user, amount, isLogin, setToken, setUserInfo, clear, phoneLogin, smsLogin, register, getUserInfo }
 })

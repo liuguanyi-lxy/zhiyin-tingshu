@@ -31,6 +31,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.atguigu.tingshu.common.constant.SystemConstant.TRACK_IS_BUY;
@@ -199,12 +200,21 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 		return exists;
 	}
 
-	//根据用户ID、专辑ID、声音ID列表查询user_paid_album、user_paid_track判断声音是否被购买
-	@Override
-	public Map<Long, Integer> userIsPaidTrack(Long userId, Long albumId, List<Long> trackIdList) {
-		//创建一个Hashmap，key为声音ID，value为声音是否被购买
-		Map<Long, Integer> map = new HashMap<>();
-		//1.首先根据用户ID和专辑ID查询user_paid_album表，判断用户是否购买过该专辑，购买过则其下的所以声音都是对用户免费的
+		//根据用户ID、专辑ID、声音ID列表查询user_paid_album、user_paid_track判断声音是否被购买
+		@Override
+		public Map<Long, Integer> userIsPaidTrack(Long userId, Long albumId, List<Long> trackIdList) {
+			//创建一个Hashmap，key为声音ID，value为声音是否被购买
+			Map<Long, Integer> map = new HashMap<>();
+			if (CollectionUtils.isEmpty(trackIdList)) {
+				return map;
+			}
+			//【联调修复】未登录游客场景（@LoginVerification(required=false)）或未购场景：
+			// userId 为空直接全部标记为未购买返回，避免 user_id=null 查库与 track_id IN () 语法错
+			if (userId == null) {
+				trackIdList.forEach(trackId -> map.put(trackId, TRACK_NOT_BUY));
+				return map;
+			}
+			//1.首先根据用户ID和专辑ID查询user_paid_album表，判断用户是否购买过该专辑，购买过则其下的所以声音都是对用户免费的
 		LambdaQueryWrapper<UserPaidAlbum> wrapper = new LambdaQueryWrapper<>();
 		wrapper.eq(UserPaidAlbum::getUserId,userId).eq(UserPaidAlbum::getAlbumId,albumId);
 		UserPaidAlbum userPaidAlbum = userPaidAlbumMapper.selectOne(wrapper);
@@ -221,21 +231,19 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 		LambdaQueryWrapper<UserPaidTrack> wrapper1 = new LambdaQueryWrapper<>();
 		wrapper1.eq(UserPaidTrack::getUserId,userId).in(UserPaidTrack::getTrackId,trackIdList);
 		List<UserPaidTrack> userPaidTracks = userPaidTrackMapper.selectList(wrapper1);
-		//如果用户购买该专辑的声音的列表不为空，就获取购买声音的ID列表
-		if(CollectionUtils.isNotEmpty(userPaidTracks)){
-			List<Long> PaidTrackId = userPaidTracks.stream().map(UserPaidTrack::getTrackId).collect(Collectors.toList());
-			//遍历声音ID列表，对map赋值
-			trackIdList.stream().forEach(trackId->{
-				if(PaidTrackId.contains(trackId)){
-					map.put(trackId,TRACK_IS_BUY);
-				}else
-					map.put(trackId,TRACK_NOT_BUY);
-			});
-		}else {
-			//如果用户没有购买该专辑的声音的列表为空，则遍历声音ID列表，对map赋值
-			trackIdList.stream().forEach(trackId->
-				map.put(trackId,TRACK_NOT_BUY));
-		}
+			//如果用户购买该专辑的声音的列表不为空，就获取购买声音的ID集合
+			if (CollectionUtils.isNotEmpty(userPaidTracks)) {
+				Set<Long> paidTrackIdSet = userPaidTracks.stream()
+						.map(UserPaidTrack::getTrackId)
+						.collect(Collectors.toSet());
+				//遍历声音ID列表，O(1)判断并对map赋值
+				trackIdList.forEach(trackId -> {
+					map.put(trackId, paidTrackIdSet.contains(trackId) ? TRACK_IS_BUY : TRACK_NOT_BUY);
+				});
+			} else {
+				//如果用户没有购买该专辑的声音的列表为空，则遍历声音ID列表，对map赋值
+				trackIdList.forEach(trackId -> map.put(trackId, TRACK_NOT_BUY));
+			}
 		return map;
 	}
 

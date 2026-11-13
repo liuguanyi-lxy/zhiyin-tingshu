@@ -2,6 +2,7 @@ package com.atguigu.tingshu.user.client;
 
 import com.atguigu.tingshu.common.result.Result;
 import com.atguigu.tingshu.user.client.impl.UserInfoDegradeFeignClient;
+import com.atguigu.tingshu.user.client.impl.UserInfoFeignClientFactory;
 import com.atguigu.tingshu.vo.user.UserInfoVo;
 import com.atguigu.tingshu.vo.user.UserPaidRecordVo;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -20,7 +21,7 @@ import java.util.Map;
  *
  * 
  */
-@FeignClient(value = "service-user", fallback = UserInfoDegradeFeignClient.class)
+@FeignClient(value = "service-user", fallbackFactory = UserInfoFeignClientFactory.class)
 public interface UserInfoFeignClient {
     /**
      * 根据userId 获取到用户信息

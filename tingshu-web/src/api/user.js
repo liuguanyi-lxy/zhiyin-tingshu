@@ -30,10 +30,8 @@ class UserApi extends Service {
   uploadAvatar(file) {
     return this.upload({ url: '/api/album/fileUpload', file })
   }
-  /** 开发联调接口（默认关闭），仅保留兼容，不在普通登录界面暴露。 */
-  devLogin(userId) {
-    return this.get({ url: `/api/user/wxLogin/devLogin/${userId}` })
-  }
+  /** 【安全审计 M4】开发联调 devLogin 已从前端移除：网关白名单条目仍在（后端属性门禁默认关），
+   *  前端不再保留该调用链，避免配置漂移时残留可用的任意账号接管入口。 */
   /** 小程序微信登录（H5 不可用，保留对齐） */
   getLogin(code) {
     return this.get({ url: `/api/user/wxLogin/wxLogin/${code}` })
