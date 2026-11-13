@@ -2,6 +2,8 @@ package com.atguigu.tingshu.account.service.impl;
 
 import com.atguigu.tingshu.account.mapper.UserAccountMapper;
 import com.atguigu.tingshu.account.mapper.RechargeInfoMapper;
+import com.atguigu.tingshu.common.execption.GuiguException;
+import com.atguigu.tingshu.common.result.ResultCodeEnum;
 import com.atguigu.tingshu.model.account.RechargeInfo;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
@@ -20,6 +22,8 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -166,5 +170,53 @@ class RechargeInfoServiceImplTest {
         assertTrue(transactional != null, "rechargePaySuccess 必须声明事务");
         assertTrue(List.of(transactional.rollbackFor()).contains(Exception.class),
                 "入账异常必须回滚已支付状态");
+    }
+
+    // ===== 充值记录详情归属校验（纵向越权防护）=====
+
+    /**
+     * 测试本人查询充值记录：登录用户 8 查询自己（userId=8）的充值记录应当放行
+     */
+    @Test
+    void ownerQuery_returnsRechargeInfo() {
+    // 模拟充值信息查询：返回用户 ID 为 8 的充值记录
+        when(rechargeInfoMapper.selectOne(any())).thenReturn(unpaidRecharge());
+
+    // 执行带归属校验的查询：本人（用户 8）查询
+        RechargeInfo rechargeInfo = service.getRechargeInfo("RECHARGE123", 8L);
+
+    // 验证返回的充值记录非空且归属本人
+        assertNotNull(rechargeInfo);
+        assertEquals(8L, rechargeInfo.getUserId());
+    }
+
+    /**
+     * 测试他人查询充值记录：登录用户 9 查询用户 8 的充值记录必须被拒绝
+     */
+    @Test
+    void anotherUserQuery_rejectedWithPermission() {
+    // 模拟充值信息查询：返回用户 ID 为 8 的充值记录
+        when(rechargeInfoMapper.selectOne(any())).thenReturn(unpaidRecharge());
+
+    // 验证非本人查询抛出业务异常，错误码为 209（没有权限）
+        GuiguException exception = assertThrows(GuiguException.class,
+                () -> service.getRechargeInfo("RECHARGE123", 9L));
+        assertEquals(ResultCodeEnum.PERMISSION.getCode(), exception.getCode());
+    }
+
+    /**
+     * 测试无用户上下文的内部调用（模拟 Feign/异步调用）：userId 为 null 时放行，不做归属校验
+     */
+    @Test
+    void internalCallWithoutUserContext_passes() {
+    // 模拟充值信息查询：返回用户 ID 为 8 的充值记录
+        when(rechargeInfoMapper.selectOne(any())).thenReturn(unpaidRecharge());
+
+    // 执行带归属校验的查询：userId 为 null 模拟内部调用，应直接放行
+        RechargeInfo rechargeInfo = service.getRechargeInfo("RECHARGE123", null);
+
+    // 验证内部调用不受归属校验影响，正常返回充值记录
+        assertNotNull(rechargeInfo);
+        assertEquals("RECHARGE123", rechargeInfo.getOrderNo());
     }
 }

@@ -44,10 +44,16 @@ public class RechargeInfoApiController {
 	}
 
 	//根据充值记录编号获取充值记录
+	//【越权防护】该路径在网关白名单中（匿名请求可到达服务端），且此前没有 @LoginVerification，
+	// LoginAspect 不会写入用户上下文，归属校验无从谈起；补上注解后：匿名请求被拒（208），
+	// 登录用户的 userId 由切面写入 ThreadLocal，再由防护方法校验"只能查自己的充值记录"。
+	@LoginVerification
 	@Operation(summary = "根据充值记录编号获取充值记录")
 	@GetMapping("getRechargeInfo/{rechargeNo}")
 	public Result<RechargeInfo> getRechargeInfo(@PathVariable String rechargeNo){
-		RechargeInfo rechargeInfo = rechargeInfoService.getRechargeInfo(rechargeNo);
+		// 归属校验：登录用户只能查看自己的充值记录；userId 为空（内部 Feign/异步调用）由防护方法放行。
+		Long userId = AuthContextHolder.getUserId();
+		RechargeInfo rechargeInfo = rechargeInfoService.getRechargeInfo(rechargeNo, userId);
 		return Result.ok(rechargeInfo);
 	}
 }

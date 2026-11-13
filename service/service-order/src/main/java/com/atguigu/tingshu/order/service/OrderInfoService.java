@@ -20,6 +20,8 @@ public interface OrderInfoService extends IService<OrderInfo> {
     String submitOrder(OrderInfoVo orderInfoVo, Long userId);
     //支付成功后根据返回的订单编号查看我的订单
     OrderInfo getOrderInfoByOrderNo(String orderNo);
+    //对外 API 专用：带归属校验的订单查询，防止登录用户越权查看他人订单；userId 为空视为内部 Feign/异步调用，直接放行
+    OrderInfo getOrderInfoByOrderNo(String orderNo, Long userId);
     //进入用户主页获取用户订单
     IPage<OrderInfo> findUserPage(Page<OrderInfo> pageParam, Long userId);
     //更新订单状态

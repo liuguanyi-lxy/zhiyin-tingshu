@@ -1,6 +1,8 @@
 package com.atguigu.tingshu.order.service.impl;
 
 import com.atguigu.tingshu.common.constant.SystemConstant;
+import com.atguigu.tingshu.common.execption.GuiguException;
+import com.atguigu.tingshu.common.result.ResultCodeEnum;
 import com.atguigu.tingshu.model.order.OrderDetail;
 import com.atguigu.tingshu.model.order.OrderInfo;
 import com.atguigu.tingshu.order.mapper.OrderDetailMapper;
@@ -21,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -32,6 +35,7 @@ import static org.mockito.Mockito.when;
 /**
  * 订单支付成功处理单元测试（纯 Mockito）。
  * 覆盖【修复#5】：条件更新幂等 —— 重复 MQ 消息不得重复发放用户购买权益。
+ * 同时覆盖订单详情接口的归属校验（纵向越权防护）。
  */
 @ExtendWith(MockitoExtension.class)
 class OrderInfoServiceImplTest {
@@ -101,5 +105,41 @@ class OrderInfoServiceImplTest {
 
         verify(userInfoFeignClient, never()).savePaidRecord(any());
         verify(orderInfoMapper, never()).update(isNull(), any());
+    }
+
+    // ===== 订单详情归属校验（纵向越权防护）=====
+
+    @Test
+    void ownerQuery_returnsOrder() {
+        when(orderInfoMapper.selectOne(any())).thenReturn(unpaidAlbumOrder());
+        when(orderDetailMapper.selectList(any())).thenReturn(List.of());
+
+        OrderInfo orderInfo = service.getOrderInfoByOrderNo("ORDER123", 8L);
+
+        assertNotNull(orderInfo);
+        assertEquals(8L, orderInfo.getUserId());
+    }
+
+    @Test
+    void anotherUserQuery_rejectedWithPermission() {
+        when(orderInfoMapper.selectOne(any())).thenReturn(unpaidAlbumOrder());
+        when(orderDetailMapper.selectList(any())).thenReturn(List.of());
+
+        // 订单归属用户 8，登录用户 9 查询必须被拒绝，错误码为 209（没有权限）。
+        GuiguException exception = assertThrows(GuiguException.class,
+                () -> service.getOrderInfoByOrderNo("ORDER123", 9L));
+        assertEquals(ResultCodeEnum.PERMISSION.getCode(), exception.getCode());
+    }
+
+    @Test
+    void internalCallWithoutUserContext_passes() {
+        // 模拟 Feign/异步等无用户上下文的内部调用：userId 为 null 时放行，不做归属校验。
+        when(orderInfoMapper.selectOne(any())).thenReturn(unpaidAlbumOrder());
+        when(orderDetailMapper.selectList(any())).thenReturn(List.of());
+
+        OrderInfo orderInfo = service.getOrderInfoByOrderNo("ORDER123", null);
+
+        assertNotNull(orderInfo);
+        assertEquals("ORDER123", orderInfo.getOrderNo());
     }
 }

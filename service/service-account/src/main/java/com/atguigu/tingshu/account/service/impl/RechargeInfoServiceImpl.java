@@ -5,6 +5,8 @@ import com.atguigu.tingshu.account.mapper.UserAccountMapper;
 import com.atguigu.tingshu.account.service.RechargeInfoService;
 import com.atguigu.tingshu.account.service.UserAccountService;
 import com.atguigu.tingshu.common.constant.SystemConstant;
+import com.atguigu.tingshu.common.execption.GuiguException;
+import com.atguigu.tingshu.common.result.ResultCodeEnum;
 import com.atguigu.tingshu.model.account.RechargeInfo;
 import com.atguigu.tingshu.model.account.UserAccount;
 import com.atguigu.tingshu.vo.account.RechargeInfoVo;
@@ -60,6 +62,26 @@ public class RechargeInfoServiceImpl extends ServiceImpl<RechargeInfoMapper, Rec
 		LambdaQueryWrapper<RechargeInfo> queryWrapper = new LambdaQueryWrapper<>();
 		queryWrapper.eq(RechargeInfo::getOrderNo,rechargeNo);
 		RechargeInfo rechargeInfo = this.getOne(queryWrapper);
+		return rechargeInfo;
+	}
+
+	/**
+	 * 对外 API 专用：查询充值记录并校验归属，防止纵向越权（登录用户拿到 rechargeNo 查看他人充值记录）。
+	 * <p>userId 为空说明当前线程没有登录上下文（Feign/异步等内部调用），直接放行，
+	 * 外部请求的登录状态由网关 AuthGlobalFilter 和 @LoginVerification 保证。</p>
+	 * <p>无权访问时抛出 209 PERMISSION（没有权限），复用旧签名 {@link #getRechargeInfo(String)}
+	 * 的内部调用路径（如 MQ 消费）不受影响。</p>
+	 * @param rechargeNo 充值记录编号
+	 * @param userId 当前登录用户 ID，可为 null（内部调用）
+	 * @return 充值记录
+	 */
+	@Override
+	public RechargeInfo getRechargeInfo(String rechargeNo, Long userId) {
+		RechargeInfo rechargeInfo = this.getRechargeInfo(rechargeNo);
+		// 记录存在且当前有登录用户时才校验归属；不是本人直接拒绝。
+		if (rechargeInfo != null && userId != null && !userId.equals(rechargeInfo.getUserId())) {
+			throw new GuiguException(ResultCodeEnum.PERMISSION);
+		}
 		return rechargeInfo;
 	}
 

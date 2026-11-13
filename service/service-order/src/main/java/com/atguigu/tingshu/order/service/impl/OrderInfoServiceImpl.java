@@ -320,6 +320,26 @@ public class OrderInfoServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo
     }
 
     /**
+     * 对外 API 专用：查询订单并校验归属，防止纵向越权（登录用户拿到 orderNo 查看他人订单）。
+     * <p>userId 为空说明当前线程没有登录上下文（Feign/异步等内部调用），直接放行，
+     * 外部请求的登录状态由网关 AuthGlobalFilter 和 @LoginVerification 保证。</p>
+     * <p>无权访问时抛出 209 PERMISSION（没有权限），复用旧签名 {@link #getOrderInfoByOrderNo(String)}
+     * 的内部调用路径（如 MQ 消费）不受影响。</p>
+     * @param orderNo 订单编号
+     * @param userId 当前登录用户 ID，可为 null（内部调用）
+     * @return 订单信息
+     */
+    @Override
+    public OrderInfo getOrderInfoByOrderNo(String orderNo, Long userId) {
+        OrderInfo orderInfo = this.getOrderInfoByOrderNo(orderNo);
+        // 记录存在且当前有登录用户时才校验归属；不是本人直接拒绝。
+        if (orderInfo != null && userId != null && !userId.equals(orderInfo.getUserId())) {
+            throw new GuiguException(ResultCodeEnum.PERMISSION);
+        }
+        return orderInfo;
+    }
+
+    /**
      * 根据payWay 返回支付方式名称
      * @param payWay
      * @return

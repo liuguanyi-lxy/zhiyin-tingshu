@@ -78,7 +78,9 @@ public class OrderInfoApiController {
 	@Operation(summary = "支付成功后根据返回的订单编号查看我的订单")
 	@GetMapping("getOrderInfo/{orderNo}")
 	public Result<OrderInfo> getOrderInfo(@PathVariable String orderNo) {
-		OrderInfo orderInfo = orderInfoService.getOrderInfoByOrderNo(orderNo);
+		// 归属校验：登录用户只能查看自己的订单；userId 为空（内部 Feign/异步调用）由防护方法放行。
+		Long userId = AuthContextHolder.getUserId();
+		OrderInfo orderInfo = orderInfoService.getOrderInfoByOrderNo(orderNo, userId);
 		return Result.ok(orderInfo);
 	}
 
